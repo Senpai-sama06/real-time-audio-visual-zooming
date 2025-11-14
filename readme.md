@@ -1,8 +1,8 @@
-### Mask-based Minimum Variance Distortionless Response Audio Beamforming
+## Mask-based Minimum Variance Distortionless Response Audio Beamforming
 
 This repository contains a Python pipeline for simulating and evaluating a 2-microphone "Audio Zoom" system. The project's goal is to overcome the $M-1$ Degree of Freedom (DoF) limit, which traditionally prevents a 2-mic array from separating multiple (N) sound sources. We investigate a Mask-Driven MVDR (Minimum Variance Distortionless Response) beamformer, where a time-frequency mask is used to generate a clean Noise Covariance Matrix ($\mathbf{R}_{noise}$) before the beamforming math is applied.
 
-## 1. How to Run the Simulation
+### 1. How to Run the Simulation
 
 This pipeline uses a 3-script process to validate the "Oracle" scenario (the theoretical best-case performance).
 
@@ -14,7 +14,7 @@ validate.py: This script scores the result by comparing the output of the beamfo
 
 To run the experiment, ensure all dependencies from requirements.txt are installed, then execute the scripts in order.
 
-## 2. Project Progress & Key Findings
+### 2. Project Progress & Key Findings
 
 Our initial experiments with a "blind" (standard) MVDR beamformer failed when faced with 2+ interferers, confirming the $M-1$ DoF limit. This led us to the Mask-Driven approach.
 
@@ -22,7 +22,7 @@ Our first attempt used a "Heuristic Mask" based on simple geometric phase-differ
 
 The breakthrough came from the "Oracle Test." By using the ground-truth files to create a perfect mask, the exact same MVDR pipeline achieved a massive 36.24dB SIR. This proves that the beamforming "engine" is sound and that the entire problem is now reduced to a high-fidelity mask estimation task.
 
-##  3. Future Work
+###  3. Future Work
 
 The 36dB Oracle result provides a clear upper bound for system performance. The logical next step is to replace the "Oracle" with a predictive model.
 
