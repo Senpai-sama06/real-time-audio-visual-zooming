@@ -1,4 +1,4 @@
-Python Simulation of Mask-Based Audio Beamforming
+### Mask-based Minimum Variance Distortionless Response Audio Beamforming
 
 This repository contains a Python pipeline for simulating and evaluating a 2-microphone "Audio Zoom" system. The project's goal is to overcome the $M-1$ Degree of Freedom (DoF) limit, which traditionally prevents a 2-mic array from separating multiple (N) sound sources. We investigate a Mask-Driven MVDR (Minimum Variance Distortionless Response) beamformer, where a time-frequency mask is used to generate a clean Noise Covariance Matrix ($\mathbf{R}_{noise}$) before the beamforming math is applied.
 
