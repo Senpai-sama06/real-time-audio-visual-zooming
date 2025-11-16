@@ -27,3 +27,10 @@ The breakthrough came from the "Oracle Test." By using the ground-truth files to
 The 36dB Oracle result provides a clear upper bound for system performance. The logical next step is to replace the "Oracle" with a predictive model.
 
 Future work will involve designing and training a Deep Learning model (e.g., a U-Net or Bi-LSTM) to predict the Ideal Binary Mask. This model will be trained on a "spatial-spectral" feature set, combining the Log-Magnitude Spectrogram (to identify what a sound is) with the Inter-channel Phase Difference (IPD) (to identify where a sound is).
+|
+|
+|-> Done 
+
+1. Verify if there can be a better way to train the model, better features to exploit in the scene.
+2. Applications possible => AZ for low power edge (SP cup focus), AZ video-calling, AZ studio-mode, Low cost replacement for FLUKE audio analyzer tool(?)
+3. Benchmarking parameters for determination of filter quality (SIR, STOI, SQNR etc) as mentioned in the rulebook

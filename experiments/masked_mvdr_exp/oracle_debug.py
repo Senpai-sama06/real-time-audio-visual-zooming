@@ -11,7 +11,7 @@ N_HOP = 256
 D = 0.04   # Make sure this matches your world.py!
 C = 343.0
 ANGLE_TARGET = 90.0
-SIGMA = 1e-5
+SIGMA = 1
 
 def get_steering_vector(angle_deg, f, d, c):
     theta_rad = np.deg2rad(angle_deg)
