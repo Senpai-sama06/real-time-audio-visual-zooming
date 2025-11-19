@@ -2,6 +2,10 @@ import numpy as np
 import scipy.signal
 import soundfile as sf
 import os
+import matplotlib.pyplot as plt
+import matplotlib as mlt
+mlt.use("TkAgg")
+
 
 # --- Constants ---
 FS = 16000
@@ -92,14 +96,15 @@ def main():
     gain_filter = mask_target 
     
     S_final = S_mvdr * gain_filter
-
+    plt.imshow(np.abs(S_final))
+    plt.show()
     # 5. Reconstruction
-    _, s_out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_HOP)
-    s_out /= np.max(np.abs(s_out))
+    # _, s_out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_HOP)
+    # s_out /= np.max(np.abs(s_out))
     
-    sf.write("output_oracle.wav", s_out, FS)
-    print("Saved 'output_oracle.wav'.")
-    print("Run validate.py on this file. If SIR < 15dB, the beamformer math is broken.")
+    # sf.write("output_oracle.wav", s_out, FS)
+    # print("Saved 'output_oracle.wav'.")
+    # print("Run validate.py on this file. If SIR < 15dB, the beamformer math is broken.")
 
 if __name__ == "__main__":
     main()
