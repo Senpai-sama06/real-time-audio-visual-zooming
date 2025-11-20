@@ -90,8 +90,12 @@ def main():
     # Old Code: gain_filter = np.maximum(mask_target, 0.1)
     # New Code: Allow it to go to zero!
     gain_filter = mask_target 
-    
+    import matplotlib.pyplot as plt
+    # import numpy as np
     S_final = S_mvdr * gain_filter
+    # S_final[150:] = S_final[150:] * 1e-10
+    plt.imshow(np.abs(S_final[:,:]), cmap='gray')
+    plt.show()
 
     # 5. Reconstruction
     _, s_out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_HOP)
