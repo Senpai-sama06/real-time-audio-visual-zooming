@@ -16,15 +16,15 @@ FS = 16000
 D = 0.04
 C = 343.0
 ANGLE_TARGET = 90.0
-N_FFT = 1024
-N_HOP = 512
+N_FFT = 512
+N_HOP = 256
 N_MICS = 2
 
 # CRITICAL FIX: Match the segment length used in training (2.0 seconds)
 SEGMENT_LEN_SAMPLES = int(2.0 * FS) 
-
+store_dir = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
 # MVDR Settings
-SIGMA = 10e-2
+SIGMA = 1e-5 
 
 # --- 2. Re-Define Model Architecture (SHALLOW CNN - MATCHES TRAINER) ---
 class ShallowCNNMaskEstimator(nn.Module):
@@ -95,7 +95,6 @@ def deploy_and_validate():
     print("--- 3. Neural MVDR Deployment and Validation (SHALLOW CNN) ---")
     
     # 1. Load Data
-    store_dir = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
     input_file = f"{store_dir}/mixture_3_sources.wav"
     if not os.path.exists(input_file):
         print("CRITICAL: Mixture file missing. Run world.py first.")
@@ -120,12 +119,12 @@ def deploy_and_validate():
     # 3. Load Trained Model
     # Initialize the SHALLOW CNN model with the exact dimensions of the STFT
     model = ShallowCNNMaskEstimator(n_freqs, n_frames) 
-    if not os.path.exists('/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator.pth'):
+    if not os.path.exists("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator_old.pth"):
         print("CRITICAL: Model file 'mask_estimator.pth' missing. Run train_neural_mask.py first.")
         return
         
     # NOTE: We load the model trained by the SHALLOW CNN
-    model.load_state_dict(torch.load('/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator.pth'))
+    model.load_state_dict(torch.load("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator_old.pth"))
     model.eval()
     print("Model loaded successfully.")
 
@@ -146,9 +145,7 @@ def deploy_and_validate():
     with torch.no_grad():
         M_target_pred = model(X_deploy).squeeze(0).numpy()
         
-        
     M_noise = 1.0 - M_target_pred # Noise Mask
-    # M_noise = np.where(M_noise>0.5, 1, 0)
 
     # 6. MVDR Core Logic
     print(f"Running MVDR with predicted mask (Sigma={SIGMA:.1e})...")
@@ -188,21 +185,21 @@ def deploy_and_validate():
     
     sf.write(f"{store_dir}/output_neural_mvdr.wav", s_out, fs)
 
-    # # 8. Validation 
-    # s_mix_mic1 = y_mix[0, :] # Get raw mixture from mic 1 (baseline)
+    # 8. Validation 
+    s_mix_mic1 = y_mix[0, :] # Get raw mixture from mic 1 (baseline)
     
-    # # Ensure all inputs to validation have the same length as the final output
-    # validation_len = s_out.shape[0]
+    # Ensure all inputs to validation have the same length as the final output
+    validation_len = s_out.shape[0]
     
-    # sdr_b, sir_b = calculate_metrics_manual(s_mix_mic1[:validation_len], s_tgt_ref[:validation_len], s_int_ref[:validation_len])
-    # sdr_m, sir_m = calculate_metrics_manual(s_out, s_tgt_ref[:validation_len], s_int_ref[:validation_len])
+    sdr_b, sir_b = calculate_metrics_manual(s_mix_mic1[:validation_len], s_tgt_ref[:validation_len], s_int_ref[:validation_len])
+    sdr_m, sir_m = calculate_metrics_manual(s_out, s_tgt_ref[:validation_len], s_int_ref[:validation_len])
 
-    # print("\n\n=== NEURAL MVDR RESULTS ===")
-    # print(f"BASELINE (Raw Mic 1):      SIR: {sir_b:.2f} dB, SDR: {sdr_b:.2f} dB")
-    # print(f"NEURAL MVDR (Masked):      SIR: {sir_m:.2f} dB, SDR: {sdr_m:.2f} dB")
-    # print("=" * 40)
-    # print(f"SIR IMPROVEMENT: +{sir_m - sir_b:.2f} dB")
-    # print(f"File saved to 'output_neural_mvdr.wav'")
+    print("\n\n=== NEURAL MVDR RESULTS ===")
+    print(f"BASELINE (Raw Mic 1):      SIR: {sir_b:.2f} dB, SDR: {sdr_b:.2f} dB")
+    print(f"NEURAL MVDR (Masked):      SIR: {sir_m:.2f} dB, SDR: {sdr_m:.2f} dB")
+    print("=" * 40)
+    print(f"SIR IMPROVEMENT: +{sir_m - sir_b:.2f} dB")
+    print(f"File saved to 'output_neural_mvdr.wav'")
 
 
 if __name__ == "__main__":
