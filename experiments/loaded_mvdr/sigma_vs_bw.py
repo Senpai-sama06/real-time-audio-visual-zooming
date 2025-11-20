@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # --- 1. Constants ---
 FS = 16000
-D = 0.04
+D = 0.08
 C = 343.0
 ANGLE_TARGET = 90.0
 ANGLE_INTERFERER = 40.0 # <-- The angle we will measure

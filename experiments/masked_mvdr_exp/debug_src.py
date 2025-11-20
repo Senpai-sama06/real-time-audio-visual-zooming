@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 # --- Constants (MUST MATCH WORLD.PY) ---
 FS = 16000
-D = 0.04
+D = 0.08
 C = 343.0
 
 def get_steering_vector(angle_deg, f, d, c):

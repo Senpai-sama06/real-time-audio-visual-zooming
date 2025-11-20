@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # --- 1. Constants & THE "KNOB" ---
 FS = 16000          # Sample rate (Must match world_builder.py)
-D = 0.04            # Mic spacing (Must match world_builder.py)
+D = 0.08            # Mic spacing (Must match world_builder.py)
 C = 343.0           # Speed of sound
 ANGLE_TARGET = 90.0 # Our look direction (Broadside)
 N_MICS = 2

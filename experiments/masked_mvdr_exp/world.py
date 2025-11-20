@@ -10,7 +10,7 @@ import librosa
 # --- 1. Constants ---
 C = 343.0           # Speed of sound (m/s)
 FS = 16000          # Target sample rate (Hz)
-D = 0.01  # Changed from 0.04 to 0.01           # Mic spacing (m)
+D = 0.08          # Mic spacing (m)
 
 # --- 2. Core Physics Functions ---
 
@@ -104,9 +104,10 @@ def main():
     y_interferer_ref /= (np.max(np.abs(y_interferer_ref)) + 1e-6)
     
     # --- Step 5: Save ---
-    sf.write("mixture_3_sources.wav", mixture, FS)
-    sf.write("target_reference.wav", y_target_ref, FS)
-    sf.write("interference_reference.wav", y_interferer_ref, FS) # <-- SAVED
+    OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    sf.write(f"{OUTPUT_PATH}/mixture_3_sources.wav", mixture, FS)
+    sf.write(f"{OUTPUT_PATH}/target_reference.wav", y_target_ref, FS)
+    sf.write(f"{OUTPUT_PATH}/interference_reference.wav", y_interferer_ref, FS) # <-- SAVED
     
     print(f"Done.")
     print(f"Saved 'mixture_3_sources.wav', 'target_reference.wav', AND 'interference_reference.wav'")

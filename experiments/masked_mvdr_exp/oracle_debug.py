@@ -7,15 +7,28 @@ import matplotlib as mlt
 mlt.use("TkAgg")
 
 
+
+
+
+# notes
+
+
+'''
+The below configuration is specific to the dataset under test
+need to design an optimal filter for the same
+'''
+
+
 # --- Constants ---
 FS = 16000
 N_MICS = 2
-N_FFT = 512
-N_HOP = 256
-D = 0.04   # Make sure this matches your world.py!
+N_FFT = 1024
+N_HOP = 512
+D = 0.08   # Make sure this matches your world.py!
 C = 343.0
 ANGLE_TARGET = 90.0
 SIGMA = 1
+SAVE_DIR = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
 
 def get_steering_vector(angle_deg, f, d, c):
     theta_rad = np.deg2rad(angle_deg)
@@ -30,15 +43,15 @@ def main():
     print("--- ORACLE TEST: Can the code theoretically work? ---")
     
     # 1. Load The "Answer Key" Files
-    if not os.path.exists("target_reference.wav") or not os.path.exists("interference_reference.wav"):
+    if not os.path.exists(F"{SAVE_DIR}/target_reference.wav") or not os.path.exists(f"{SAVE_DIR}/interference_reference.wav"):
         print("Error: Reference files missing. Run world.py first.")
         return
 
-    y_mix, _ = sf.read("mixture_3_sources.wav", dtype='float32') # [Samples, 2]
+    y_mix, _ = sf.read(f"{SAVE_DIR}/mixture_3_sources.wav", dtype='float32') # [Samples, 2]
     y_mix = y_mix.T 
     
-    s_tgt_ref, _ = sf.read("target_reference.wav", dtype='float32')
-    s_int_ref, _ = sf.read("interference_reference.wav", dtype='float32')
+    s_tgt_ref, _ = sf.read(f"{SAVE_DIR}/target_reference.wav", dtype='float32')
+    s_int_ref, _ = sf.read(f"{SAVE_DIR}/interference_reference.wav", dtype='float32')
     
     # 2. Compute STFTs
     f, t, Y_mix = scipy.signal.stft(y_mix, fs=FS, nperseg=N_FFT, noverlap=N_HOP)
@@ -53,6 +66,7 @@ def main():
 
     # 3. Construct the ORACLE MASK (The Cheat)
     # Mask = 1 if Interference > Target (i.e., this bin is Noise)
+
     mag_tgt = np.abs(S_tgt)
     mag_int = np.abs(S_int)
     
@@ -96,15 +110,15 @@ def main():
     gain_filter = mask_target 
     
     S_final = S_mvdr * gain_filter
-    plt.imshow(np.abs(S_final))
-    plt.show()
+    # plt.imshow(np.abs(S_final))
+    # plt.show()
     # 5. Reconstruction
-    # _, s_out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_HOP)
-    # s_out /= np.max(np.abs(s_out))
+    _, s_out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_HOP)
+    s_out /= np.max(np.abs(s_out))
     
-    # sf.write("output_oracle.wav", s_out, FS)
-    # print("Saved 'output_oracle.wav'.")
-    # print("Run validate.py on this file. If SIR < 15dB, the beamformer math is broken.")
+    sf.write(F"{SAVE_DIR}/output_oracle.wav", s_out, FS)
+    print(f"Saved to - {SAVE_DIR}/output_oracle.wav")
+    print("Run validate.py on this file. If SIR < 15dB, the beamformer math is broken.")
 
 if __name__ == "__main__":
     main()

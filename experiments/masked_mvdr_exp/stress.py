@@ -10,7 +10,7 @@ import librosa
 # --- Constants ---
 C = 343.0
 FS = 16000
-D = 0.04
+D = 0.08
 
 # --- Physics ---
 def calculate_far_field_delays(azimuth_deg, d, c):

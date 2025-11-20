@@ -10,7 +10,7 @@ import librosa
 # --- 1. Constants ---
 C = 343.0           # Speed of sound (m/s)
 FS = 16000          # Our *target* sample rate (Hz)
-D = 0.04            # Mic spacing (m)
+D = 0.08            # Mic spacing (m)
 
 # --- 2. Core Physics Functions (Unchanged) ---
 

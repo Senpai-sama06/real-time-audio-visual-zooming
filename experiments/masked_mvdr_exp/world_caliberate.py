@@ -9,7 +9,7 @@ import librosa
 # --- Constants ---
 C = 343.0
 FS = 16000
-D = 0.04
+D = 0.08
 
 def calculate_far_field_delays(azimuth_deg, d, c):
     theta_rad = np.deg2rad(azimuth_deg)
