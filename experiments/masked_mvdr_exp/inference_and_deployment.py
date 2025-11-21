@@ -22,8 +22,8 @@ N_MICS = 2
 
 # CRITICAL FIX: Match the segment length used in training (2.0 seconds)
 SEGMENT_LEN_SAMPLES = int(2.0 * FS) 
-# store_dir = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-store_dir = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+store_dir = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+# store_dir = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
 # MVDR Settings
 SIGMA = 1e-5 
 
@@ -156,8 +156,8 @@ def deploy_and_validate():
     
     # 3. Load Trained Model
     model = ShallowCNNMaskEstimator(n_freqs, n_frames) 
-    # model_path = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator_old.pth"
-    model_path = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator_old.pth"
+    model_path = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator_old.pth"
+    # model_path = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_estimator_old.pth"
     
     if not os.path.exists(model_path):
         print(f"CRITICAL: Model file '{model_path}' missing.")
