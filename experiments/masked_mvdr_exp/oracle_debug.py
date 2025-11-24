@@ -24,7 +24,7 @@ FS = 16000
 N_MICS = 2
 N_FFT = 1024
 N_HOP = 512
-D = 0.08   # Make sure this matches your world.py!
+D = 0.08  
 C = 343.0
 ANGLE_TARGET = 90.0
 SIGMA = 1
@@ -45,7 +45,7 @@ def main():
     # 1. Load The "Answer Key" Files
     if not os.path.exists(F"{SAVE_DIR}/target_reference.wav") or not os.path.exists(f"{SAVE_DIR}/interference_reference.wav"):
         print("Error: Reference files missing. Run world.py first.")
-        return
+        return  
 
     y_mix, _ = sf.read(f"{SAVE_DIR}/mixture_3_sources.wav", dtype='float32') # [Samples, 2]
     y_mix = y_mix.T 

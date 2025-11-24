@@ -99,13 +99,15 @@ def main():
 
     # Normalize
     mixture = np.stack([y_mic1, y_mic2], axis=1)
-    mixture /= np.max(np.abs(mixture))
-    y_target_ref /= (np.max(np.abs(y_target_ref)) + 1e-6)
-    y_interferer_ref /= (np.max(np.abs(y_interferer_ref)) + 1e-6)
+    scale = max(np.max(np.abs(mixture)), 1e-9)
+    mixture /= scale
+    y_target_ref /= scale
+    y_interferer_ref /= scale
+
     
     # --- Step 5: Save ---
-    OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    # OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    # OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
     sf.write(f"{OUTPUT_PATH}/mixture_3_sources.wav", mixture, FS)
     sf.write(f"{OUTPUT_PATH}/target_reference.wav", y_target_ref, FS)
     sf.write(f"{OUTPUT_PATH}/interference_reference.wav", y_interferer_ref, FS) # <-- SAVED
