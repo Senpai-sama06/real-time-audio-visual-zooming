@@ -165,7 +165,7 @@ def main_deploy(input_path):
 
 if __name__ == "__main__":
     # Change this to your arbitrary file path
-    INPUT_FILE = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/interference_reference.wav" 
+    INPUT_FILE = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/mixture_3_sources.wav" 
     if os.path.exists(INPUT_FILE):
         main_deploy(INPUT_FILE)
     else:
