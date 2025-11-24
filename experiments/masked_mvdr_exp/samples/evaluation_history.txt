@@ -936,3 +936,71 @@ PROCESSED SIGNAL:
 --------------------------------------------------------
 TOTAL SIR IMPROVEMENT: +28.12 dB
 ========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-24 12:36:32
+FILE TESTED:        recovered_source_0.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 8.39 dB
+  Output OSINR: 1.15 dB
+  STOI Score:  0.8472
+  PESQ-WB Score: 1.0917
+  PESQ-NB Score: 1.7063
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +11.09 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-24 12:36:46
+FILE TESTED:        recovered_source_1.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: -23.68 dB
+  Output OSINR: -29.48 dB
+  STOI Score:  0.1583
+  PESQ-WB Score: 1.0525
+  PESQ-NB Score: 1.1109
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +-20.98 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-24 12:36:52
+FILE TESTED:        recovered_source_2.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: -20.33 dB
+  Output OSINR: -24.28 dB
+  STOI Score:  0.1956
+  PESQ-WB Score: 1.0299
+  PESQ-NB Score: 1.0508
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +-17.63 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-24 13:04:57
+FILE TESTED:        output_neural_mvdr.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -1.86 dB
+  Input OSINR: -1.87 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 19.26 dB
+  Output OSINR: 4.70 dB
+  STOI Score:  0.8417
+  PESQ-WB Score: 1.5005
+  PESQ-NB Score: 2.2878
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +21.12 dB
+========================================================
