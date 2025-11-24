@@ -834,3 +834,105 @@ PROCESSED SIGNAL:
 --------------------------------------------------------
 TOTAL SIR IMPROVEMENT: +21.72 dB
 ========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-21 17:25:22
+FILE TESTED:        output_oracle.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 25.42 dB
+  Output OSINR: 12.16 dB
+  STOI Score:  0.9641
+  PESQ-WB Score: 2.0346
+  PESQ-NB Score: 2.6661
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +28.12 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-21 17:30:16
+FILE TESTED:        output_oracle.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 25.42 dB
+  Output OSINR: 12.16 dB
+  STOI Score:  0.9641
+  PESQ-WB Score: 2.0346
+  PESQ-NB Score: 2.6661
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +28.12 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-21 17:30:31
+FILE TESTED:        output_oracle.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 23.04 dB
+  Output OSINR: 10.91 dB
+  STOI Score:  0.9552
+  PESQ-WB Score: 2.2169
+  PESQ-NB Score: 2.9310
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +25.74 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-21 17:33:12
+FILE TESTED:        output_oracle_zoom_0-8.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 13.71 dB
+  Output OSINR: -1.44 dB
+  STOI Score:  0.7426
+  PESQ-WB Score: 1.1601
+  PESQ-NB Score: 1.4981
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +16.41 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-21 19:02:24
+FILE TESTED:        output_oracle_zoom_5.0.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 18.80 dB
+  Output OSINR: 2.42 dB
+  STOI Score:  0.7597
+  PESQ-WB Score: 1.1308
+  PESQ-NB Score: 1.4690
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +21.51 dB
+========================================================
+========================================================
+EVALUATION RUNTIME: 2025-11-21 19:02:43
+FILE TESTED:        output_oracle.wav
+--------------------------------------------------------
+BASELINE (Raw Mix):
+  Input SIR: -2.70 dB
+  Input OSINR: -2.70 dB
+--------------------------------------------------------
+PROCESSED SIGNAL:
+  Output OSIR: 25.42 dB
+  Output OSINR: 12.16 dB
+  STOI Score:  0.9641
+  PESQ-WB Score: 2.0346
+  PESQ-NB Score: 2.6661
+--------------------------------------------------------
+TOTAL SIR IMPROVEMENT: +28.12 dB
+========================================================
