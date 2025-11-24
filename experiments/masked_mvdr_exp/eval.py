@@ -83,9 +83,9 @@ def load_and_align_signals(output_file_full_path, output_path):
         s_est, _ = sf.read(output_file_full_path, dtype='float32')
         
         # Load reference files using the output_path
-        s_tgt_ref, _ = sf.read(os.path.join(output_path, "target_reference.wav"), dtype='float32')
-        s_int_ref, _ = sf.read(os.path.join(output_path, "interference_reference.wav"), dtype='float32')
-        s_mix, _ = sf.read(os.path.join(output_path, "mixture_3_sources.wav"), dtype='float32')
+        s_tgt_ref, _ = sf.read(os.path.join(output_path, "target_ref_TRAIN.wav"), dtype='float32')
+        s_int_ref, _ = sf.read(os.path.join(output_path, "interf_ref_TRAIN.wav"), dtype='float32')
+        s_mix, _ = sf.read(os.path.join(output_path, "mixture_TRAIN.wav"), dtype='float32')
         
     except FileNotFoundError as e:
         missing_file = str(e).split("'")[1]

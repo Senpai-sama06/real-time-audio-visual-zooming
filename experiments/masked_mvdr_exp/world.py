@@ -1,29 +1,21 @@
 import numpy as np
-import scipy.signal
 import soundfile as sf
 import os
 import kagglehub
 import glob
 import random
 import librosa
+import argparse
 
-# --- 1. Constants ---
-C = 343.0           # Speed of sound (m/s)
-FS = 16000          # Target sample rate (Hz)
-D = 0.08          # Mic spacing (m)
+# --- Constants ---
+C = 343.0
+FS = 16000
+D = 0.08
 
-# --- 2. Core Physics Functions ---
-
-def calculate_far_field_delays(azimuth_deg, elevation_deg, d, c):
+def calculate_far_field_delays(azimuth_deg, d, c):
     theta_rad = np.deg2rad(azimuth_deg)
-    phi_rad = np.deg2rad(elevation_deg)
-    
-    path_diff_m1 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - 0)
-    path_diff_m2 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - np.pi)
-
-    tau_m1 = path_diff_m1 / c
-    tau_m2 = path_diff_m2 / c
-    
+    tau_m1 = (d / 2) * np.cos(0) * np.cos(theta_rad - 0) / c
+    tau_m2 = (d / 2) * np.cos(0) * np.cos(theta_rad - np.pi) / c
     return tau_m1, tau_m2
 
 def apply_frac_delay(y, delay_sec, fs):
@@ -31,8 +23,7 @@ def apply_frac_delay(y, delay_sec, fs):
     y_fft = np.fft.rfft(y)
     freqs = np.fft.rfftfreq(n, 1.0 / fs)
     phase_shift = np.exp(-1j * 2 * np.pi * freqs * delay_sec)
-    y_delayed = np.fft.irfft(y_fft * phase_shift, n=n)
-    return y_delayed
+    return np.fft.irfft(y_fft * phase_shift, n=n)
 
 def load_audio_and_resample(file_path, target_fs):
     y, orig_fs = sf.read(file_path, dtype='float32')
@@ -40,80 +31,80 @@ def load_audio_and_resample(file_path, target_fs):
     if orig_fs != target_fs: y = librosa.resample(y, orig_sr=orig_fs, target_sr=target_fs)
     return y
 
-# --- 4. Main Script ---
-
 def main():
-    print("--- 1. World Builder: 3-Source 'Cocktail Party' (FIXED) ---")
+    parser = argparse.ArgumentParser(description="World Builder: 3-Source Generator")
+    parser.add_argument("--output_dir", type=str, required=True)
+    parser.add_argument("--index", type=str, required=True, help="Run Index")
+    args = parser.parse_args()
 
-    # --- Step 1: Get Data ---
+    os.makedirs(args.output_dir, exist_ok=True)
+    
+    # 1. Dataset
     try:
         path = kagglehub.dataset_download("mathurinache/the-lj-speech-dataset")
         wav_path = os.path.join(path, "LJSpeech-1.1", "wavs")
         all_wav_files = glob.glob(os.path.join(wav_path, "*.wav"))
         selected_files = random.sample(all_wav_files, 3)
     except Exception as e:
-        print(f"Error getting data: {e}")
+        print(f"Data Error: {e}")
         return
-    
-    # --- Step 2: Define Sources ---
+
+    # 2. Source Setup
     sources_setup = [
         {'file': selected_files[0], 'azimuth_deg': 90.0,  'role': 'Target'},
         {'file': selected_files[1], 'azimuth_deg': 40.0,  'role': 'InterfererA'},
         {'file': selected_files[2], 'azimuth_deg': 130.0, 'role': 'InterfererB'}
     ]
-    
-    # --- Step 3: Load & Process ---
+
+    # 3. Load & Process
     audio_sources = {}
     max_len = 0
-    
     for source in sources_setup:
         audio = load_audio_and_resample(source['file'], FS)
         audio_sources[source['file']] = audio
         max_len = max(max_len, len(audio))
             
+    # Pad
     for k, v in audio_sources.items():
         if len(v) < max_len:
             audio_sources[k] = np.pad(v, (0, max_len - len(v)))
 
-    # --- Step 4: Build Mixture & References ---
+    # 4. Mix
     y_mic1 = np.zeros(max_len, dtype=np.float32)
     y_mic2 = np.zeros(max_len, dtype=np.float32)
-    y_target_ref = np.zeros(max_len, dtype=np.float32)
-    y_interferer_ref = np.zeros(max_len, dtype=np.float32) # <-- NEW: Track Interference
+    y_tgt_ref = np.zeros(max_len, dtype=np.float32)
+    y_int_ref = np.zeros(max_len, dtype=np.float32)
 
-    print("Mixing sources...")
     for source in sources_setup:
         s_audio = audio_sources[source['file']]
-        tau_m1, tau_m2 = calculate_far_field_delays(source['azimuth_deg'], 0.0, D, C)
+        tau_m1, tau_m2 = calculate_far_field_delays(source['azimuth_deg'], D, C)
         
-        s_delayed_m1 = apply_frac_delay(s_audio, tau_m1, FS)
-        s_delayed_m2 = apply_frac_delay(s_audio, tau_m2, FS)
+        s_m1 = apply_frac_delay(s_audio, tau_m1, FS)
+        s_m2 = apply_frac_delay(s_audio, tau_m2, FS)
         
-        y_mic1 += s_delayed_m1
-        y_mic2 += s_delayed_m2
+        y_mic1 += s_m1
+        y_mic2 += s_m2
         
         if source['role'] == 'Target':
-            y_target_ref += s_delayed_m1
+            y_tgt_ref += s_m1
         else:
-            y_interferer_ref += s_delayed_m1 # Accumulate all interference
+            y_int_ref += s_m1
 
     # Normalize
     mixture = np.stack([y_mic1, y_mic2], axis=1)
     scale = max(np.max(np.abs(mixture)), 1e-9)
     mixture /= scale
-    y_target_ref /= scale
-    y_interferer_ref /= scale
+    y_tgt_ref /= scale
+    y_int_ref /= scale
 
-    
-    # --- Step 5: Save ---
-    # OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    sf.write(f"{OUTPUT_PATH}/mixture_3_sources.wav", mixture, FS)
-    sf.write(f"{OUTPUT_PATH}/target_reference.wav", y_target_ref, FS)
-    sf.write(f"{OUTPUT_PATH}/interference_reference.wav", y_interferer_ref, FS) # <-- SAVED
-    
-    print(f"Done.")
-    print(f"Saved 'mixture_3_sources.wav', 'target_reference.wav', AND 'interference_reference.wav'")
+    # 5. Save
+    f_mix = os.path.join(args.output_dir, f"{args.index}_mixture.wav")
+    f_tgt = os.path.join(args.output_dir, f"{args.index}_target_reference.wav")
+    f_int = os.path.join(args.output_dir, f"{args.index}_interference_reference.wav")
+
+    sf.write(f_mix, mixture, FS)
+    sf.write(f_tgt, y_tgt_ref, FS)
+    sf.write(f_int, y_int_ref, FS)
 
 if __name__ == "__main__":
     main()

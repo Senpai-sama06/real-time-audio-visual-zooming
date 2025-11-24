@@ -2,27 +2,28 @@ import numpy as np
 import torch
 import soundfile as sf
 import scipy.signal
-import json
+import argparse
+import sys
 import os
 import torch.nn as nn
 import torch.nn.functional as F
-from mir_eval.separation import bss_eval_sources
 
-# --- 1. Load Config ---
-if not os.path.exists("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/config.json"): raise FileNotFoundError("Config missing")
-with open("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/config.json", "r") as f: CONF = json.load(f)
+# Import the profiler
+from profiler_utils import profile_performance
 
-FS = CONF["fs"]
-N_FFT = CONF["n_fft"]
-HOP = CONF["hop_len"]
-WIN_SIZE_SAMPLES = CONF["train_seg_samples"] # 32000
-D = CONF["d"]
-C = CONF["c"]
+# --- 1. Constants (Preserved from Inference Logic) ---
+# Hardcoded here to avoid dependency on an external config.json file
+FS = 16000
+N_FFT = 1024
+HOP_LEN = 512
+WIN_SIZE_SAMPLES = 32000 # 2.0 seconds
+D = 0.08
+C = 343.0
 ANGLE_TARGET = 90.0
 SIGMA = 1e-5
 N_MICS = 2
 
-# --- 2. Architecture (Must Match Training) ---
+# --- 2. Architecture (Kept Exact) ---
 class FreqPreservingUNet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -63,7 +64,7 @@ class FreqPreservingUNet(nn.Module):
         d1 = self.dec1(torch.cat([u1, e1], dim=1))
         return self.out(d1).squeeze(1)
 
-# --- 3. Physics Helper ---
+# --- 3. Physics Helper (Kept Exact) ---
 def get_steering_vector(angle_deg, f, d, c):
     theta = np.deg2rad(angle_deg)
     tau1 = (d / 2) * np.cos(0) * np.cos(theta) / c
@@ -71,20 +72,11 @@ def get_steering_vector(angle_deg, f, d, c):
     omega = 2 * np.pi * f
     return np.array([[np.exp(-1j * omega * tau1)], [np.exp(-1j * omega * tau2)]], dtype=complex)
 
-def calculate_metrics_manual(output, target, interf):
-    if len(target) == 0: return 0, 0
-    output = output / (np.linalg.norm(output) + 1e-6)
-    target = target / (np.linalg.norm(target) + 1e-6)
-    interf = interf / (np.linalg.norm(interf) + 1e-6)
-    
-    p_t = np.sum(np.dot(output, target)**2)
-    p_i = np.sum(np.dot(output, interf)**2) + 1e-10
-    return 10 * np.log10(p_t/p_i), 10 * np.log10(p_t/p_i)
-
-# --- 4. Sliding Window Processor ---
+# --- 4. Sliding Window Processor (Kept Exact) ---
 def process_chunk(y_chunk, model):
     """ Runs MVDR on a single 2.0s chunk """
-    f, t, Y = scipy.signal.stft(y_chunk.T, fs=FS, nperseg=N_FFT, noverlap=N_FFT-HOP)
+    # STFT parameters match inference.py logic
+    f, t, Y = scipy.signal.stft(y_chunk.T, fs=FS, nperseg=N_FFT, noverlap=N_FFT-HOP_LEN)
     mag = np.abs(Y)
     ipd = np.angle(Y[0]) - np.angle(Y[1])
     
@@ -111,32 +103,39 @@ def process_chunk(y_chunk, model):
         S_out[i, :] = w.conj().T @ Y_vec
 
     S_final = S_out * np.maximum(Mask, 0.05)
-    _, out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_FFT-HOP)
+    _, out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_FFT-HOP_LEN)
     return out
 
-def main_deploy(input_path):
-    print(f"Processing {input_path}...")
-    if not os.path.exists("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_3.pth"):
-        print("Model not found.")
+# --- 5. Main Execution (Refactored for Callability) ---
+
+def run_mvdr_logic(mix_path, output_path, model_path):
+    # Check Model
+    if not os.path.exists(model_path):
+        print(f"[MVDR] Error: Model not found at {model_path}")
         return
 
-    y_full, fs = sf.read(input_path, dtype='float32')
-    WIN_SIZE = WIN_SIZE_SAMPLES 
-    HOP = WIN_SIZE // 2            
-    
+    # Load Model
     model = FreqPreservingUNet()
-    model.load_state_dict(torch.load("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_3.pth", map_location='cpu'))
+    # Map to CPU to ensure consistency across test environments
+    model.load_state_dict(torch.load(model_path, map_location='cpu'))
     model.eval()
+    
+    # Load Audio
+    y_full, fs = sf.read(mix_path, dtype='float32')
+    # Handle implicit channel transpose if necessary (consistent with inference.py)
+    # inference.py logic expects (Samples, Channels) but reads via sf.read
+    
+    WIN_SIZE = WIN_SIZE_SAMPLES 
+    STEP = WIN_SIZE // 2            
     
     # Overlap-Add Buffer
     output_buffer = np.zeros(len(y_full) + WIN_SIZE)
     norm_buffer = np.zeros(len(y_full) + WIN_SIZE)
-    num_chunks = int(np.ceil(len(y_full) / HOP))
+    num_chunks = int(np.ceil(len(y_full) / STEP))
     
-    print(f"Audio Length: {len(y_full)/FS:.2f}s. Processing {num_chunks} sliding windows...")
-
+    # Processing Loop
     for i in range(num_chunks):
-        start = i * HOP
+        start = i * STEP
         end = start + WIN_SIZE
         chunk = y_full[start:end]
         
@@ -152,21 +151,20 @@ def main_deploy(input_path):
     norm_buffer[norm_buffer == 0] = 1.0
     final_output = output_buffer[:len(y_full)] / norm_buffer[:len(y_full)]
     
-    out_name = f"enhanced_{os.path.basename(input_path)}"
-    sf.write(out_name, final_output, fs)
-    print(f"Saved: {out_name}")
+    # Save using the output_path argument
+    sf.write(output_path, final_output, fs)
 
-    if "mixture_" in input_path:
-        tgt, _ = sf.read("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/target_reference.wav")
-        intf, _ = sf.read("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/interference_reference.wav")
-        L = min(len(final_output), len(tgt))
-        sir, _ = calculate_metrics_manual(final_output[:L], tgt[:L], intf[:L])
-        print(f"SIR Improvement: {sir:.2f} dB")
+def main():
+    parser = argparse.ArgumentParser(description="Pipeline C: Neural Masked MVDR")
+    parser.add_argument("--mix_path", type=str, required=True, help="Input mixture")
+    parser.add_argument("--output_path", type=str, required=True, help="Output wav")
+    parser.add_argument("--model_path", type=str, required=True, help="Model checkpoint")
+    parser.add_argument("--stats_path", type=str, required=True, help="JSON stats output")
+    args = parser.parse_args()
+
+    # Wrapped in profiler for time/memory tracking
+    with profile_performance(args.stats_path):
+        run_mvdr_logic(args.mix_path, args.output_path, args.model_path)
 
 if __name__ == "__main__":
-    # Change this to your arbitrary file path
-    INPUT_FILE = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/mixture_3_sources.wav" 
-    if os.path.exists(INPUT_FILE):
-        main_deploy(INPUT_FILE)
-    else:
-        print("Input file not found.")
+    main()
