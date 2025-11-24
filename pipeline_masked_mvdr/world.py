@@ -5,6 +5,7 @@ import os
 import kagglehub
 import glob
 import random
+import datetime
 import librosa
 
 # --- 1. Constants ---
@@ -104,12 +105,23 @@ def main():
     y_interferer_ref /= (np.max(np.abs(y_interferer_ref)) + 1e-6)
     
     # --- Step 5: Save ---
-    sf.write("mixture_3_sources.wav", mixture, FS)
-    sf.write("target_reference.wav", y_target_ref, FS)
-    sf.write("interference_reference.wav", y_interferer_ref, FS) # <-- SAVED
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    output_dir_world = os.path.join(f"Simulation_Output_{timestamp}","World_Outputs")
+
+    mix_path = os.path.join(output_dir_world, "mixture_3_sources.wav")
+    y_target_ref_path = os.path.join(output_dir_world, "target_reference.wav")
+    y_interferer_ref_path = os.path.join(output_dir_world, "interference_reference.wav")
+    os.makedirs(output_dir_world, exist_ok=True)
+    
+    sf.write(mix_path, mixture, FS)
+    sf.write(y_target_ref_path, y_target_ref, FS)
+    sf.write(y_interferer_ref_path, y_interferer_ref, FS)
     
     print(f"Done.")
     print(f"Saved 'mixture_3_sources.wav', 'target_reference.wav', AND 'interference_reference.wav'")
+
+    return output_dir_world
 
 if __name__ == "__main__":
     main()
