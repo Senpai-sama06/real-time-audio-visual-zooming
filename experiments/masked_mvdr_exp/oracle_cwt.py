@@ -6,7 +6,7 @@ Wavelet-domain oracle MVDR audio-zoom pipeline (complete script).
 
 Usage: edit INPUT_* paths below or run as-is if your world builder produced the expected files.
 
-Author: ChatGPT (GPT-5 Thinking mini)
+Author: ChatGPT (GPT-5 Thinking mini)   
 """
 
 import os
