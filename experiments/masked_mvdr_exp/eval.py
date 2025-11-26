@@ -158,10 +158,10 @@ def main():
     print("--- SP CUP 2026: Official Metrics Scoreboard ---")
     
     # --- HARDCODED PATH DEFINITIONS (Modify these for your setup) ---
-    # OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    BASE_FILENAME = "output_neural_mvdr"
-    # BASE_FILENAME = "output_oracle"
+    OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    # OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    BASE_FILENAME = "enhanced_mixture_TRAIN"
+    # BASE_FILENAME = "duet_target_90deg"
     # BASE_FILENAME = "output_neural_zoom_5"
     
     # Construct the full path for the estimated signal
