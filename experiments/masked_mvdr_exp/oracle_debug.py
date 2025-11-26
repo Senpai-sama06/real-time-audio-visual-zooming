@@ -28,7 +28,8 @@ D = 0.08
 C = 343.0
 ANGLE_TARGET = 90.0
 SIGMA = 1
-SAVE_DIR = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+# SAVE_DIR = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+SAVE_DIR = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
 
 def get_steering_vector(angle_deg, f, d, c):
     theta_rad = np.deg2rad(angle_deg)

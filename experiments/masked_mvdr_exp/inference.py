@@ -9,8 +9,12 @@ import torch.nn.functional as F
 from mir_eval.separation import bss_eval_sources
 
 # --- 1. Load Config ---
-if not os.path.exists("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/config.json"): raise FileNotFoundError("Config missing")
-with open("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/config.json", "r") as f: CONF = json.load(f)
+# PATH="/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/config.json"
+PATH="/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/"
+if not os.path.exists(f"{PATH}/config.json"): 
+    raise FileNotFoundError("Config missing")
+with open(f"{PATH}/config.json", "r") as f: 
+    CONF = json.load(f)
 
 FS = CONF["fs"]
 N_FFT = CONF["n_fft"]
@@ -116,7 +120,7 @@ def process_chunk(y_chunk, model):
 
 def main_deploy(input_path):
     print(f"Processing {input_path}...")
-    if not os.path.exists("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_3.pth"):
+    if not os.path.exists(f"{PATH}/mask_3.pth"):
         print("Model not found.")
         return
 
@@ -125,7 +129,7 @@ def main_deploy(input_path):
     HOP = WIN_SIZE // 2            
     
     model = FreqPreservingUNet()
-    model.load_state_dict(torch.load("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/mask_3.pth", map_location='cpu'))
+    model.load_state_dict(torch.load(f"{PATH}/mask_3.pth", map_location='cpu'))
     model.eval()
     
     # Overlap-Add Buffer
@@ -157,15 +161,17 @@ def main_deploy(input_path):
     print(f"Saved: {out_name}")
 
     if "mixture_" in input_path:
-        tgt, _ = sf.read("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/target_reference.wav")
-        intf, _ = sf.read("/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/interference_reference.wav")
+        tgt, _ = sf.read(f"{PATH}/samples/target_reference.wav")
+        intf, _ = sf.read(f"{PATH}/samples/interference_reference.wav")
         L = min(len(final_output), len(tgt))
         sir, _ = calculate_metrics_manual(final_output[:L], tgt[:L], intf[:L])
         print(f"SIR Improvement: {sir:.2f} dB")
 
 if __name__ == "__main__":
     # Change this to your arbitrary file path
-    INPUT_FILE = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/mixture_3_sources.wav" 
+    INPUT_FILE = f"{PATH}/samples/mixture_3_sources.wav" 
+    print(INPUT_FILE)
+
     if os.path.exists(INPUT_FILE):
         main_deploy(INPUT_FILE)
     else:

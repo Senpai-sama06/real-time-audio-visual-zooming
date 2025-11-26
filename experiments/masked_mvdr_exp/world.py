@@ -106,8 +106,8 @@ def main():
 
     
     # --- Step 5: Save ---
-    # OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    # OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
     sf.write(f"{OUTPUT_PATH}/mixture_3_sources.wav", mixture, FS)
     sf.write(f"{OUTPUT_PATH}/target_reference.wav", y_target_ref, FS)
     sf.write(f"{OUTPUT_PATH}/interference_reference.wav", y_interferer_ref, FS) # <-- SAVED
