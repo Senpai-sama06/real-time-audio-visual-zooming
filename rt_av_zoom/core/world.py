@@ -107,7 +107,7 @@ def main():
     # --- Step 5: Save ---
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    output_dir_world = os.path.join(f"Simulation_Output_{timestamp}","World_Outputs")
+    output_dir_world = os.path.join(f"simulation_results/Simulation_Output_{timestamp}","World_Outputs")
 
     mix_path = os.path.join(output_dir_world, "mixture_3_sources.wav")
     y_target_ref_path = os.path.join(output_dir_world, "target_reference.wav")

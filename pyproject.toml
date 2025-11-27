@@ -1,0 +1,57 @@
+[build-system]
+# This section defines the tools needed to BUILD your package.
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# 1. Package Identity
+# MATCHES your folder name 'rt_av_zoom' but uses hyphens for standardization.
+name = "rt-av-zoom" 
+version = "0.1.0"
+description = "A Real-Time Audio-Visual Zooming pipeline based on Masked MVDR Beamforming."
+readme = "README.md"
+
+# 2. Authors (Please replace with your actual info)
+authors = [
+    {name = "Your Name", email = "your@email.com"},
+]
+license = {text = "MIT"} 
+requires-python = ">=3.9" 
+
+# 3. Core Runtime Dependencies
+# Essential libraries required by world.py, masked_mvdr.py, and validate.py/run_metrics.py
+dependencies = [
+    "numpy",         # Core array and matrix math.
+    "scipy",         # Signal processing (STFT/ISTFT), I/O, and spectral analysis.
+    "soundfile",     # General WAV file handling (used across core and scripts).
+    "librosa",       # Resampling audio in world.py.
+    "kagglehub",     # Data downloading in world.py.
+]
+
+# This tells setuptools where to find your package code.
+# The 'rt_av_zoom*' pattern ensures your 'rt_av_zoom' folder is included.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rt_av_zoom*"]
+
+# 4. Development/Benchmarking Dependencies
+# Installable via: pip install .[dev]
+[project.optional-dependencies]
+dev = [
+    "pytest",        # Testing framework.
+    "black",         # Code formatter.
+    "matplotlib",    # All plotting (SRP, Masks, Spectrograms).
+    "pesq",          # Perceptual evaluation metric (used in peqs.py).
+]
+
+# 5. Tool Configuration
+[tool.black] 
+line-length = 88
+target-version = ['py39']
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]

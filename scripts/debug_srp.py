@@ -5,12 +5,17 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
-# --- Constants (Must match World.py) ---
-FS = 16000
-D = 0.01  # Changed from 0.04 to 0.01
-C = 343.0
+# --- Import Constants from the Core Package ---
+# This ensures that the debug script uses the exact physics constraints 
+# defined by the MVDR beamformer.
+from rt_av_zoom.core.masked_mvdr import D, C, N_MICS
+
+# --- Constants ---
+FS = 16000 # Keeping local FS definition
+# D and C are now imported
 
 def get_steering_vector(angle_deg, f, d, c):
+    # Function body remains the same
     theta_rad = np.deg2rad(angle_deg)
     tau_m1 = (d / 2) * np.cos(0) * np.cos(theta_rad - 0) / c
     tau_m2 = (d / 2) * np.cos(0) * np.cos(theta_rad - np.pi) / c
@@ -46,7 +51,8 @@ def main(output_dir_world):
         energy_at_angle = 0
         for i in range(n_freqs):
             if f[i] < 200 or f[i] > 4000: continue 
-            d = get_steering_vector(angle, f[i], D, C)
+            # D and C are correctly imported and used here
+            d = get_steering_vector(angle, f[i], D, C) 
             y_vec = Y_stft[:, i, :] 
             output = d.conj().T @ y_vec 
             energy_at_angle += np.sum(np.abs(output)**2)
@@ -86,4 +92,10 @@ def main(output_dir_world):
     print(f"Plot saved to: {plot_path}")
 
 if __name__ == "__main__":
-    main()
+    # --- CRITICAL FIX ---
+    # Read the argument (the output directory) passed by the main pipeline script.
+    if len(sys.argv) < 2:
+        print("Usage: python debug_srp.py <simulation_output_directory>")
+    else:
+        # sys.argv[0] is the script name; sys.argv[1] is the first argument (the path)
+        main(sys.argv[1])

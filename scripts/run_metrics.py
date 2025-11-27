@@ -5,8 +5,7 @@ import sys
 
 def calculate_metrics_manual(output_signal, target_ref, interf_ref):
     """
-    Manually calculates SIR and SDR.
-    This avoids the 'inf' issues by doing a simple projection.
+    Manually calculates SIR and SDR using signal projection.
     """
     # 1. Normalize all signals to unit energy for fair comparison
     eps = 1e-10
@@ -44,12 +43,12 @@ def main(output_dir_world):
         return
 
     # 2. Locate Files
-    # Inputs are in World_Outputs
+    # Inputs are in World_Outputs (the directory passed)
     file_mix = os.path.join(output_dir_world, "mixture_3_sources.wav")
     file_ref_tgt = os.path.join(output_dir_world, "target_reference.wav")
     file_ref_int = os.path.join(output_dir_world, "interference_reference.wav")
     
-    # The Output is in MVDR_Outputs (sibling folder)
+    # The Output is in MVDR_Outputs (sibling folder to World_Outputs)
     run_root = os.path.dirname(output_dir_world)
     mvdr_dir = os.path.join(run_root, "MVDR_Outputs")
     file_masked = os.path.join(mvdr_dir, "output_masked_mvdr.wav")
@@ -96,4 +95,8 @@ def main(output_dir_world):
     print(f"SIR IMPROVEMENT: {sir_m - sir_b:.2f} dB")
 
 if __name__ == "__main__":
-    main()
+    # --- CRITICAL FIX: Read the argument passed by the main pipeline script ---
+    if len(sys.argv) < 2:
+        print("Usage: python run_metrics.py <simulation_output_directory>")
+    else:
+        main(sys.argv[1])

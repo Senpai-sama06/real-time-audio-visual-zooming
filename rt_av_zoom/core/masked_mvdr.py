@@ -7,8 +7,8 @@ import sys
 
 # --- 1. Constants ---
 FS = 16000
-D = 0.01  # Matches World.py (1cm)
-C = 343.0
+D = 0.01          # Mic spacing (Matches world.py/0.01)
+C = 343.0         # Speed of sound
 ANGLE_TARGET = 90.0
 N_MICS = 2
 
@@ -23,6 +23,7 @@ def get_steering_vector(angle_deg, f, d, c):
     theta_rad = np.deg2rad(angle_deg)
     phi_rad = 0.0 
     
+    # Simple TDOA calculation for array geometry
     tau_m1 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - 0) / c
     tau_m2 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - np.pi) / c
     
@@ -108,14 +109,16 @@ def main(output_dir_world):
         if f[f_idx] < 100: continue 
         
         R = R_noise[f_idx]
-        R_loaded = R + SIGMA * np.eye(n_channels)
+        R_loaded = R + SIGMA * np.eye(N_MICS) # Use N_MICS constant
         d = get_steering_vector(ANGLE_TARGET, f[f_idx], D, C)
         
         try:
+            # Solve for weights w: R_loaded * w = d
             R_inv_d = np.linalg.solve(R_loaded, d)
             denom = d.conj().T @ R_inv_d
-            w = R_inv_d / (denom + 1e-10)
+            w = R_inv_d / (denom + 1e-10) # Apply the MVDR constraint: d^H * w = 1
         except np.linalg.LinAlgError:
+            # Fallback to a simple weight if linear algebra fails
             w = np.array([[1], [0]])
             
         S_out_stft[f_idx, :] = w.conj().T @ Y_stft[:, f_idx, :]
@@ -132,4 +135,9 @@ def main(output_dir_world):
     print(f"Saved outputs to: {mvdr_output_dir}")
 
 if __name__ == "__main__":
-    main()
+    # This block is mostly for local testing and should be run via the main pipeline
+    # It attempts to read an argument if available
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        print("Usage: python masked_mvdr.py <simulation_output_directory>")

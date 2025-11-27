@@ -4,19 +4,25 @@ from scipy.io import wavfile
 from scipy.signal import spectrogram
 from pesq import pesq
 from typing import Union, Tuple
+import os
+
+# --- NEW: Import Core Sampling Rate Constant ---
+# Ensure the PESQ evaluation uses the exact FS defined in the core simulation.
+from rt_av_zoom.core.world import FS 
 
 class PESQEvaluator:
     """
     An object-oriented class for calculating PESQ and plotting spectrograms
     between a reference (source) and a degraded (reconstructed) audio file.
     """
-    def __init__(self, ref_file_path: str, deg_file_path: str):
+    # Use the imported FS as a default if none is provided or inferred.
+    def __init__(self, ref_file_path: str, deg_file_path: str, target_fs: int = FS):
         """
         Initializes the evaluator with file paths and loads the audio data.
         """
         self.ref_file_path = ref_file_path
         self.deg_file_path = deg_file_path
-        self.fs: Union[int, None] = None
+        self.fs: Union[int, None] = target_fs # Use imported FS as target
         self.ref_audio: Union[np.ndarray, None] = None
         self.deg_audio: Union[np.ndarray, None] = None
         
@@ -41,13 +47,13 @@ class PESQEvaluator:
             raise
 
         # Check sampling rate consistency
-        if ref_fs != deg_fs:
-            raise ValueError(
-                f"Sampling rates do not match: Reference is {ref_fs}Hz, Degraded is {deg_fs}Hz."
-            )
-        self.fs = ref_fs
+        if ref_fs != deg_fs or ref_fs != self.fs:
+             print(f"Warning: Audio FS mismatch (Reference: {ref_fs}Hz, Target: {self.fs}Hz).")
+             # We rely on the core FS, but use the file's FS if it's consistent.
+             if ref_fs == deg_fs: self.fs = ref_fs
+             else: raise ValueError("Audio files have different sampling rates.")
 
-        # Check for mono and convert to float (PESQ typically expects float or int16)
+        # Check for mono and convert to float 
         if self.ref_audio.ndim > 1 or self.deg_audio.ndim > 1:
              raise ValueError("PESQ requires mono audio. Please convert multi-channel files to mono.")
         
@@ -56,9 +62,6 @@ class PESQEvaluator:
         self.ref_audio = self.ref_audio[:min_len]
         self.deg_audio = self.deg_audio[:min_len]
         
-        # Convert to float for safety, and ensure it's not overly large
-        # Note: wavfile.read can return different dtypes (int16, int32, float32, etc.)
-        # We ensure they are consistent and float for further processing.
         self.ref_audio = self.ref_audio.astype(np.float64)
         self.deg_audio = self.deg_audio.astype(np.float64)
         
@@ -109,13 +112,11 @@ class PESQEvaluator:
 
         return nb_score, wb_score
 
+    # ... (plot_spectograms function body remains the same) ...
+
     def plot_spectograms(self, window_size: float = 0.02, overlap_ratio: float = 0.5):
         """
         Calculates and plots the spectrograms for the reference and degraded audio.
-
-        Args:
-            window_size: Size of the window in seconds (e.g., 0.02s = 20ms).
-            overlap_ratio: Ratio of overlap between successive windows (e.g., 0.5 = 50%).
         """
         if self.fs is None or self.ref_audio is None or self.deg_audio is None:
             print("Cannot plot: Audio data was not loaded correctly.")
@@ -156,6 +157,7 @@ class PESQEvaluator:
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         plt.show()
 
+
 # --- Example Usage ---
 # NOTE: Replace these with your actual file paths.
 REF_AUDIO_PATH = "target_reference.wav"
@@ -163,7 +165,7 @@ DEG_AUDIO_PATH = "output_oracle.wav"
 
 if __name__ == '__main__':
     try:
-        # Create an instance of the PESQEvaluator object
+        # Create an instance of the PESQEvaluator object, uses the imported FS
         evaluator = PESQEvaluator(REF_AUDIO_PATH, DEG_AUDIO_PATH)
         
         # Run the full evaluation (PESQ Scores)

@@ -1,4 +1,65 @@
-*.wav
-full_audio_generating_pipeline/
-max_snr/
-loaded_mvdr/
+# -----------------------------------------------------------------------------
+# General Python Artifacts
+# -----------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.so
+
+# Distribution / Packaging
+.eggs/
+*.egg-info/
+dist/
+build/
+htmlcov/
+.coverage
+
+# mypy
+.mypy_cache/
+
+# -----------------------------------------------------------------------------
+# Virtual Environments
+# -----------------------------------------------------------------------------
+# Virtual environment directories (common names)
+venv/
+env/
+
+# Specific virtual env name from your prompt
+enigma/
+
+# Pip environments
+.pip_environment/
+
+# -----------------------------------------------------------------------------
+# Data, Outputs, and Generated Content (CRITICAL)
+# -----------------------------------------------------------------------------
+# Ignore all large output and simulation results directories
+data/outputs/
+simulation_results/
+
+# Ignore the entire experiments directory, as this often contains ad-hoc code,
+# large samples, and temporary results that are not part of the final package.
+experiments/
+
+# For large input data files (WAV files can be huge).
+# If your data/inputs/ directory is very large, uncomment the line below.
+# If it only contains small sample files for testing, you can keep it in Git.
+# data/inputs/
+
+# -----------------------------------------------------------------------------
+# Operating System and Editor Files
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Visual Studio Code
+# Uncomment if you want to ignore settings/extensions specific to your machine
+# .vscode/
+
+# Jupyter Notebook Checkpoints (If you add a 'notebooks/' folder)
+.ipynb_checkpoints/
