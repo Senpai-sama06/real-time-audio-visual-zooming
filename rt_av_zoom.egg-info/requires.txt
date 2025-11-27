@@ -1,0 +1,11 @@
+numpy
+scipy
+soundfile
+librosa
+kagglehub
+
+[dev]
+pytest
+black
+matplotlib
+pesq
