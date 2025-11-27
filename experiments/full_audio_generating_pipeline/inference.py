@@ -116,7 +116,7 @@ def process_chunk(y_chunk, model):
 
 def main_deploy(input_path):
     print(f"Processing {input_path}...")
-    if not os.path.exists("mask_estimator.pth"):
+    if not os.path.exists("mask_3.pth"):
         print("Model not found.")
         return
 
@@ -125,7 +125,7 @@ def main_deploy(input_path):
     HOP = WIN_SIZE // 2            
     
     model = FreqPreservingUNet()
-    model.load_state_dict(torch.load("mask_estimator.pth", map_location='cpu'))
+    model.load_state_dict(torch.load("mask_3.pth", map_location='cpu'))
     model.eval()
     
     # Overlap-Add Buffer
@@ -165,7 +165,7 @@ def main_deploy(input_path):
 
 if __name__ == "__main__":
     # Change this to your arbitrary file path
-    INPUT_FILE = "mixture_TRAIN.wav" 
+    INPUT_FILE = "mixture_TEST.wav" 
     if os.path.exists(INPUT_FILE):
         main_deploy(INPUT_FILE)
     else:
