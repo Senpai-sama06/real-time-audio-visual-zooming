@@ -6,7 +6,10 @@ import json
 import os
 import torch.nn as nn
 import torch.nn.functional as F
+import time
 from mir_eval.separation import bss_eval_sources
+
+
 
 # --- 1. Load Config ---
 if not os.path.exists("config.json"): raise FileNotFoundError("Config missing")
@@ -165,8 +168,12 @@ def main_deploy(input_path):
 
 if __name__ == "__main__":
     # Change this to your arbitrary file path
+    start = time.time()
     INPUT_FILE = "mixture_TEST.wav" 
     if os.path.exists(INPUT_FILE):
         main_deploy(INPUT_FILE)
     else:
         print("Input file not found.")
+    
+    end = time.time()
+    print(f"final time {start - end}")

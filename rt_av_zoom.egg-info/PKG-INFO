@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: rt-av-zoom
+Version: 0.1.0
+Summary: A Real-Time Audio-Visual Zooming pipeline based on Masked MVDR Beamforming.
+Author-email: Your Name <your@email.com>
+License: MIT
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: soundfile
+Requires-Dist: librosa
+Requires-Dist: kagglehub
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: matplotlib; extra == "dev"
+Requires-Dist: pesq; extra == "dev"

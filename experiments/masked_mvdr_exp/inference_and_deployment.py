@@ -19,8 +19,8 @@ ANGLE_TARGET = 90.0
 N_FFT = 512
 N_HOP = 256
 N_MICS = 2
-# out_dir = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-out_dir = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+out_dir = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+# out_dir = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
 
 # CRITICAL FIX: Match the segment length used in training (2.0 seconds)
 SEGMENT_LEN_SAMPLES = int(2.0 * FS) 
@@ -121,12 +121,12 @@ def deploy_and_validate():
     # 3. Load Trained Model
     # Initialize the SHALLOW CNN model with the exact dimensions of the STFT
     model = ShallowCNNMaskEstimator(n_freqs, n_frames) 
-    if not os.path.exists(f'{out_dir}/../mask_estimator_old.pth'):
+    if not os.path.exists(f'{out_dir}/../mask_3.pth'):
         print("CRITICAL: Model file 'mask_estimator.pth' missing. Run train_neural_mask.py first.")
         return
         
     # NOTE: We load the model trained by the SHALLOW CNN
-    model.load_state_dict(torch.load(f'{out_dir}/../mask_estimator_old.pth'))
+    model.load_state_dict(torch.load(f'{out_dir}/../mask_3.pth'))
     model.eval()
     print("Model loaded successfully.")
 
