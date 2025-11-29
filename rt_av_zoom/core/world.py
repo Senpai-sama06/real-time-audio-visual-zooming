@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.signal
 import soundfile as sf
 import os
 import kagglehub
@@ -7,121 +6,263 @@ import glob
 import random
 import datetime
 import librosa
+import argparse
+import pyroomacoustics as pra
+from pystoi import stoi
+from pesq import pesq
 
-# --- 1. Constants ---
-C = 343.0           # Speed of sound (m/s)
-FS = 16000          # Target sample rate (Hz)
-D = 0.01  # Changed from 0.04 to 0.01           # Mic spacing (m)
+# --- 1. Constants & Specs ---
+FS = 16000          
+ROOM_DIM = [4.9, 4.9, 4.9] 
+RT60_TARGET = 0.5   
+SIR_TARGET_DB = 0   
+SNR_TARGET_DB = 5   
 
-# --- 2. Core Physics Functions ---
+# Mic Array: Center of room, 8cm spacing
+MIC_LOCS = np.array([
+    [2.41, 2.45, 1.5], # Mic 1 (Left)
+    [2.49, 2.45, 1.5]  # Mic 2 (Right)
+]).T 
 
-def calculate_far_field_delays(azimuth_deg, elevation_deg, d, c):
-    theta_rad = np.deg2rad(azimuth_deg)
-    phi_rad = np.deg2rad(elevation_deg)
-    
-    path_diff_m1 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - 0)
-    path_diff_m2 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - np.pi)
+SOURCE_TARGET_POS = [2.45, 3.45, 1.5] # 90 degrees
+SOURCE_INTERF_POS = [3.22, 3.06, 1.5] # 40 degrees
 
-    tau_m1 = path_diff_m1 / c
-    tau_m2 = path_diff_m2 / c
-    
-    return tau_m1, tau_m2
+# --- 2. Helper Functions ---
 
-def apply_frac_delay(y, delay_sec, fs):
-    n = len(y)
-    y_fft = np.fft.rfft(y)
-    freqs = np.fft.rfftfreq(n, 1.0 / fs)
-    phase_shift = np.exp(-1j * 2 * np.pi * freqs * delay_sec)
-    y_delayed = np.fft.irfft(y_fft * phase_shift, n=n)
-    return y_delayed
-
-def load_audio_and_resample(file_path, target_fs):
-    y, orig_fs = sf.read(file_path, dtype='float32')
-    if len(y.shape) > 1: y = np.mean(y, axis=1)
-    if orig_fs != target_fs: y = librosa.resample(y, orig_sr=orig_fs, target_sr=target_fs)
-    return y
-
-# --- 4. Main Script ---
-
-def main():
-    print("--- 1. World Builder: 3-Source 'Cocktail Party' (FIXED) ---")
-
-    # --- Step 1: Get Data ---
+def get_audio_files(dataset_name, n_needed):
+    """Unified file fetcher for all datasets."""
+    files = []
+    print(f"--- Fetching Dataset: {dataset_name} ---")
     try:
-        path = kagglehub.dataset_download("mathurinache/the-lj-speech-dataset")
-        wav_path = os.path.join(path, "LJSpeech-1.1", "wavs")
-        all_wav_files = glob.glob(os.path.join(wav_path, "*.wav"))
-        selected_files = random.sample(all_wav_files, 3)
+        if dataset_name == 'librispeech':
+            path = kagglehub.dataset_download("pypiahmad/librispeech-asr-corpus")
+            files = glob.glob(os.path.join(path, "**", "*.flac"), recursive=True)
+        elif dataset_name == 'musan':
+            path = kagglehub.dataset_download("dogrose/musan-dataset")
+            files = glob.glob(os.path.join(path, "**", "*.wav"), recursive=True)
+        else: 
+            # Default: LJSpeech
+            path = kagglehub.dataset_download("mathurinache/the-lj-speech-dataset")
+            wav_path = os.path.join(path, "LJSpeech-1.1", "wavs")
+            files = glob.glob(os.path.join(wav_path, "*.wav"))
+
+        if len(files) < n_needed:
+            if len(files) > 0:
+                print(f"Warning: Only found {len(files)} files. Duplicating to reach {n_needed}.")
+                while len(files) < n_needed:
+                    files += files
+            else:
+                raise ValueError(f"No files found for {dataset_name}")
+        
+        return random.sample(files, n_needed)
+
     except Exception as e:
         print(f"Error getting data: {e}")
-        return
-    
-    # --- Step 2: Define Sources ---
-    sources_setup = [
-        {'file': selected_files[0], 'azimuth_deg': 90.0,  'role': 'Target'},
-        {'file': selected_files[1], 'azimuth_deg': 40.0,  'role': 'InterfererA'},
-        {'file': selected_files[2], 'azimuth_deg': 130.0, 'role': 'InterfererB'}
-    ]
-    
-    # --- Step 3: Load & Process ---
-    audio_sources = {}
-    max_len = 0
-    
-    for source in sources_setup:
-        audio = load_audio_and_resample(source['file'], FS)
-        audio_sources[source['file']] = audio
-        max_len = max(max_len, len(audio))
-            
-    for k, v in audio_sources.items():
-        if len(v) < max_len:
-            audio_sources[k] = np.pad(v, (0, max_len - len(v)))
+        return []
 
-    # --- Step 4: Build Mixture & References ---
-    y_mic1 = np.zeros(max_len, dtype=np.float32)
-    y_mic2 = np.zeros(max_len, dtype=np.float32)
-    y_target_ref = np.zeros(max_len, dtype=np.float32)
-    y_interferer_ref = np.zeros(max_len, dtype=np.float32) # <-- NEW: Track Interference
-
-    print("Mixing sources...")
-    for source in sources_setup:
-        s_audio = audio_sources[source['file']]
-        tau_m1, tau_m2 = calculate_far_field_delays(source['azimuth_deg'], 0.0, D, C)
+def load_audio_and_resample(file_path, target_fs, target_len=None, min_duration=4.0):
+    """Loads audio, resamples, and pads/trims to exact target_len."""
+    try:
+        y, orig_fs = sf.read(file_path, dtype='float32')
+        if len(y.shape) > 1: y = np.mean(y, axis=1) # Mono
+        if orig_fs != target_fs:
+            y = librosa.resample(y, orig_sr=orig_fs, target_sr=target_fs)
         
-        s_delayed_m1 = apply_frac_delay(s_audio, tau_m1, FS)
-        s_delayed_m2 = apply_frac_delay(s_audio, tau_m2, FS)
-        
-        y_mic1 += s_delayed_m1
-        y_mic2 += s_delayed_m2
-        
-        if source['role'] == 'Target':
-            y_target_ref += s_delayed_m1
+        if target_len is None:
+            desired_samples = int(min_duration * target_fs)
+            if len(y) < desired_samples:
+                repeats = int(np.ceil(desired_samples / len(y)))
+                y = np.tile(y, repeats)[:desired_samples]
         else:
-            y_interferer_ref += s_delayed_m1 # Accumulate all interference
+            if len(y) < target_len:
+                 repeats = int(np.ceil(target_len / len(y)))
+                 y = np.tile(y, repeats)[:target_len]
+            else:
+                y = y[:target_len]
+        return y
+    except Exception as e:
+        print(f"Error loading {file_path}: {e}")
+        return np.zeros(int(min_duration*target_fs))
 
-    # Normalize
-    mixture = np.stack([y_mic1, y_mic2], axis=1)
-    mixture /= np.max(np.abs(mixture))
-    y_target_ref /= (np.max(np.abs(y_target_ref)) + 1e-6)
-    y_interferer_ref /= (np.max(np.abs(y_interferer_ref)) + 1e-6)
+def add_awgn(signal, snr_db):
+    sig_power = np.mean(signal ** 2)
+    if sig_power == 0: return signal
+    noise_power = sig_power / (10 ** (snr_db / 10))
+    noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
+    return signal + noise
+
+def calculate_metrics(clean, degraded, fs):
+    min_len = min(len(clean), len(degraded))
+    clean = clean[:min_len]
+    degraded = degraded[:min_len]
+    try: d_stoi = stoi(clean, degraded, fs, extended=False)
+    except: d_stoi = 0.0
+    try: d_pesq = pesq(fs, clean, degraded, 'wb')
+    except: d_pesq = 0.0
+    return d_stoi, d_pesq
+
+# --- 3. Main Script ---
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--reverb', action='store_true')
+    parser.add_argument('--no-reverb', action='store_false', dest='reverb')
+    parser.add_argument('--n', type=int, default=1, help='Extra interferers')
+    parser.add_argument('--dataset', type=str, default='ljspeech', choices=['ljspeech', 'librispeech', 'musan'])
+    args = parser.parse_args()
+
+    # --- 1. Setup Room ---
+    print(f"--- Settings: {args.dataset} | {'Reverb' if args.reverb else 'Anechoic'} | +{args.n} Extra Src ---")
     
-    # --- Step 5: Save ---
+    if args.reverb:
+        e_absorption = pra.inverse_sabine(RT60_TARGET, ROOM_DIM)
+        
+        # FIX FOR TypeError: float() argument must be a string or a real number, not 'tuple'
+        if isinstance(e_absorption, (tuple, np.ndarray)):
+            # Assume we only want the first coefficient for a flat absorber material
+            e_absorption = e_absorption[0] 
+            
+        materials = pra.Material(float(e_absorption))
+        max_order = 10 
+    else:
+        materials = pra.Material(1.0)
+        max_order = 0
+
+    room = pra.ShoeBox(ROOM_DIM, fs=FS, materials=materials, max_order=max_order)
+    room.add_microphone_array(MIC_LOCS)
+
+    # --- 2. Load Audio ---
+    total_sources_needed = 2 + args.n 
+    files = get_audio_files(args.dataset, total_sources_needed)
+    if not files or len(files) < total_sources_needed:
+        print("CRITICAL ERROR: Not enough audio files.")
+        return
+
+    # Load Target (Master Length)
+    target_sig = load_audio_and_resample(files[0], FS, target_len=None) 
+    L = len(target_sig)
+
+    # Load Interferer 1 (Fixed)
+    interf1_sig = load_audio_and_resample(files[1], FS, target_len=L)
+    
+    # Load Extra Interferers (Random)
+    extra_interferers = []
+    for i in range(args.n):
+        sig = load_audio_and_resample(files[2+i], FS, target_len=L)
+        extra_interferers.append(sig)
+
+    # --- 3. Add Sources to Room ---
+    # Index 0: Target
+    room.add_source(SOURCE_TARGET_POS, signal=target_sig)
+    
+    # Index 1: Fixed Interferer
+    room.add_source(SOURCE_INTERF_POS, signal=interf1_sig)
+    
+    # Index 2+: Extra Interferers
+    for i, sig in enumerate(extra_interferers):
+        rx = random.uniform(1.0, ROOM_DIM[0]-1.0)
+        ry = random.uniform(1.0, ROOM_DIM[1]-1.0)
+        room.add_source([rx, ry, 1.5], signal=sig)
+
+    # --- 4. Compute RIRs ---
+    print("Simulating RIRs...")
+    room.compute_rir()
+
+    # --- 5. Mix with SIR Control ---
+    mix_ch1 = np.zeros(L)
+    mix_ch2 = np.zeros(L)
+    target_ref = np.zeros(L)
+    interf_ref = np.zeros(L)
+    
+    gain_scalar = 1.0 
+    
+    # --- CALCULATE GAIN (Using Mic 1) ---
+    t_rir_1 = room.rir[0][0]
+    t_comp_1 = np.convolve(target_sig, t_rir_1)[:L]
+    
+    i_total_raw_1 = np.zeros(L)
+    
+    # Fixed Interferer
+    i1_rir_1 = room.rir[0][1]
+    i_total_raw_1 += np.convolve(interf1_sig, i1_rir_1)[:L]
+    
+    # Extra Interferers
+    for k, sig in enumerate(extra_interferers):
+        ik_rir_1 = room.rir[0][2+k]
+        i_total_raw_1 += np.convolve(sig, ik_rir_1)[:L]
+        
+    # Gain for SIR = 0dB
+    p_t = np.mean(t_comp_1**2)
+    p_i = np.mean(i_total_raw_1**2)
+    
+    if p_i > 0:
+        gain_scalar = np.sqrt(p_t / p_i)
+    else:
+        gain_scalar = 0.0
+        
+    print(f"Calculated Gain for SIR 0dB: {gain_scalar:.4f}")
+
+    # --- CONSTRUCT MIXTURES ---
+    
+    for m_idx in range(2): # 0=Mic1, 1=Mic2
+        # Target
+        t_comp = np.convolve(target_sig, room.rir[m_idx][0])[:L]
+        
+        # Total Interference
+        i_total = np.zeros(L)
+        i_total += np.convolve(interf1_sig, room.rir[m_idx][1])[:L]
+        for k, sig in enumerate(extra_interferers):
+            i_total += np.convolve(sig, room.rir[m_idx][2+k])[:L]
+            
+        # Apply Gain
+        i_final = i_total * gain_scalar
+        
+        # Mix + Noise
+        clean_mix = t_comp + i_final
+        noisy_mix = add_awgn(clean_mix, SNR_TARGET_DB)
+        
+        if m_idx == 0:
+            mix_ch1 = noisy_mix
+            target_ref = t_comp # Mic 1 Target Reference
+            interf_ref = i_final # Mic 1 Interference Reference (Scaled)
+        else:
+            mix_ch2 = noisy_mix
+
+    # --- 6. Normalization & Saving ---
+    peak = max(np.max(np.abs(mix_ch1)), np.max(np.abs(mix_ch2))) + 1e-9
+    
+    mix_ch1 /= peak
+    mix_ch2 /= peak
+    
+    target_ref_norm = target_ref / (np.max(np.abs(target_ref)) + 1e-9)
+    interf_ref_norm = interf_ref / (np.max(np.abs(interf_ref)) + 1e-9)
+    
+    # Combine into Stereo (2-channel)
+    stereo_mix = np.stack([mix_ch1, mix_ch2], axis=1)
+
+    # Metrics
+    val_stoi, val_pesq = calculate_metrics(target_ref_norm, mix_ch1, FS)
+    
+    # Save
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    mode_str = "reverb" if args.reverb else "anechoic"
+    output_dir = os.path.join(f"simulation_results", f"{args.dataset}_{mode_str}_{timestamp}")
+    os.makedirs(output_dir, exist_ok=True)
 
-    output_dir_world = os.path.join(f"simulation_results/Simulation_Output_{timestamp}","World_Outputs")
-
-    mix_path = os.path.join(output_dir_world, "mixture_3_sources.wav")
-    y_target_ref_path = os.path.join(output_dir_world, "target_reference.wav")
-    y_interferer_ref_path = os.path.join(output_dir_world, "interference_reference.wav")
-    os.makedirs(output_dir_world, exist_ok=True)
+    # WRITE STEREO MIXTURE
+    sf.write(os.path.join(output_dir, "mixture.wav"), stereo_mix, FS)
     
-    sf.write(mix_path, mixture, FS)
-    sf.write(y_target_ref_path, y_target_ref, FS)
-    sf.write(y_interferer_ref_path, y_interferer_ref, FS)
+    # WRITE MONO REFERENCES
+    sf.write(os.path.join(output_dir, "target_reference.wav"), target_ref_norm, FS)
+    sf.write(os.path.join(output_dir, "interference_reference.wav"), interf_ref_norm, FS)
     
-    print(f"Done.")
-    print(f"Saved 'mixture_3_sources.wav', 'target_reference.wav', AND 'interference_reference.wav'")
+    with open(os.path.join(output_dir, "info.txt"), "w") as f:
+        f.write(f"Dataset: {args.dataset}\nMode: {mode_str}\n")
+        f.write(f"STOI: {val_stoi}\nPESQ: {val_pesq}\n")
+        f.write(f"Channels: mixture.wav (Stereo), target_ref (Mono), interf_ref (Mono)")
 
-    return output_dir_world
+    print(f"DONE. Output folder: {output_dir}")
+    print("Files created: mixture.wav (Stereo), target_reference.wav, interference_reference.wav")
 
 if __name__ == "__main__":
     main()
