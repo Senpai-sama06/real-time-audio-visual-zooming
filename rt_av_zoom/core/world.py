@@ -1,3 +1,9 @@
+'''
+usage : 
+python world.py --no-reverb --n 10
+'''
+
+
 import numpy as np
 import soundfile as sf
 import os
@@ -85,7 +91,7 @@ def load_audio_and_resample(file_path, target_fs, target_len=None, min_duration=
         return np.zeros(int(min_duration*target_fs))
 
 def add_awgn(signal, snr_db):
-    sig_power = np.mean(signal ** 2)
+    sig_power = np.mean(signal ** 2)    
     if sig_power == 0: return signal
     noise_power = sig_power / (10 ** (snr_db / 10))
     noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
