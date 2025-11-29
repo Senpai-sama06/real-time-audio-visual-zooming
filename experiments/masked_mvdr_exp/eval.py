@@ -17,10 +17,12 @@ except ImportError:
 # --- PESQ EVALUATOR CLASS ---
 
 class PESQEvaluator:
+
     """
     An object-oriented class for calculating the Perceptual Evaluation of Speech
     Quality (PESQ) score between a reference and a degraded audio signal.
     """
+    
     def __init__(self, ref_audio: np.ndarray, deg_audio: np.ndarray, fs: int):
         """
         Initializes the evaluator with audio data.
@@ -158,10 +160,10 @@ def main():
     print("--- SP CUP 2026: Official Metrics Scoreboard ---")
     
     # --- HARDCODED PATH DEFINITIONS (Modify these for your setup) ---
-    OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
+    OUTPUT_PATH = "samples"
     # OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    BASE_FILENAME = "enhanced_mixture_TRAIN"
-    # BASE_FILENAME = "duet_target_90deg"
+    #BASE_FILENAME = "enhanced_mixture_TRAIN"
+    BASE_FILENAME = "duet_target_90deg"
     # BASE_FILENAME = "output_neural_zoom_5"
     
     # Construct the full path for the estimated signal
@@ -222,6 +224,7 @@ def main():
         print(f"Results appended to {os.path.join(OUTPUT_PATH, HISTORY_FILE)}")
     except Exception as e:
         print(f"\nFATAL ERROR: Could not write to history file. {e}")
-
+    
 if __name__ == "__main__":
+
     main()

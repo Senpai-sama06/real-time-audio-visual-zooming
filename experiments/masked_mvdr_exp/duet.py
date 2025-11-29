@@ -15,8 +15,8 @@ MAX_TAU = MIC_DIST / SPEED_SOUND
 N_FFT = 2048   
 HOP_LEN = 512
 
-INPUT_FILE = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/mixture_3_sources.wav" 
-OUTPUT_FILE = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples/duet_target_90deg.wav"
+INPUT_FILE = "samples/mixture_3_sources.wav" 
+OUTPUT_FILE = "samples/duet_target_90deg.wav"
 
 # --- 2. Core Math ---
 
