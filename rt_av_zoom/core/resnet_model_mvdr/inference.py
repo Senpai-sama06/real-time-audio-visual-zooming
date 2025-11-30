@@ -278,8 +278,8 @@ def main_deploy(input_path, FOLDER):
 # RUN
 # =====================================================================
 if __name__ == "__main__":
-    HOME_DIR = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/rt_av_zoom/core/simulation_results/ljspeech_reverb_20251130_155519/"
-    INPUT_FILE = f"{HOME_DIR}/mixture.wav"
+    HOME_DIR = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/rt_av_zoom/core/simulation_results/ljspeech_reverb_20251130_215709/"
+    INPUT_FILE = f"{HOME_DIR}/mixture_wpe.wav"
     if os.path.exists(INPUT_FILE):
         main_deploy(INPUT_FILE, HOME_DIR)
     else:

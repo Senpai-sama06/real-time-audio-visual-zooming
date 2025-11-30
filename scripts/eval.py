@@ -159,8 +159,9 @@ def main():
     
     # --- HARDCODED PATH DEFINITIONS (Modify these for your setup) ---
     # OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/rt_av_zoom/core/simulation_results/ljspeech_reverb_20251130_031744"
-    BASE_FILENAME = "output_oracle"
+    OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/rt_av_zoom/core/simulation_results/ljspeech_reverb_20251130_215709"
+    BASE_FILENAME = "output_oracle_reverb"
+    # BASE_FILENAME = "mixture"
     # BASE_FILENAME = "duet_target_90deg"
     # BASE_FILENAME = "output_neural_zoom_5"
     

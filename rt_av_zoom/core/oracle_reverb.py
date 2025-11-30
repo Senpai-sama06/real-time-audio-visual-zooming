@@ -18,7 +18,7 @@ def get_latest_run_dir():
     return all_runs[0] if all_runs else "simulation_results/latest_run"
 
 # DEFAULT_OUTDIR = get_latest_run_dir()
-DEFAULT_OUTDIR = "simulation_results/ljspeech_reverb_20251130_170316"
+DEFAULT_OUTDIR = "simulation_results/ljspeech_reverb_20251130_215709"
 # print(DEFAULT_OUTDIR)
 
 # --- Import Core Constants and Helpers ---

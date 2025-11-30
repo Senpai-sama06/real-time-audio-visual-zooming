@@ -21,7 +21,7 @@ def get_latest_run_dir():
     all_runs = sorted(glob.glob(search_pattern), reverse=True)
     return all_runs[0] if all_runs else None
 
-DEFAULT_OUTDIR = get_latest_run_dir()
+DEFAULT_OUTDIR = "simulation_results/ljspeech_reverb_20251130_215709"
 
 def apply_wpe(y_mix, taps=10, delay=3, iterations=3):
     """
