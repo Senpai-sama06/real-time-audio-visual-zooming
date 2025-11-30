@@ -22,7 +22,7 @@ from rt_av_zoom.core.masked_mvdr import (
 # ANGLE_TARGET is still needed locally as it's a specific experiment parameter
 ANGLE_TARGET = 90.0
 SIGMA = 1 # Specific to this debug/oracle run
-OUTDIR = "simulation_results/ljspeech_reverb_20251130_031744"
+OUTDIR = "simulation_results/ljspeech_anechoic_20251130_154029"
 
 def main():
     print("--- ORACLE TEST: Can the code theoretically work? ---")
