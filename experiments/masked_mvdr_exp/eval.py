@@ -17,10 +17,12 @@ except ImportError:
 # --- PESQ EVALUATOR CLASS ---
 
 class PESQEvaluator:
+
     """
     An object-oriented class for calculating the Perceptual Evaluation of Speech
     Quality (PESQ) score between a reference and a degraded audio signal.
     """
+    
     def __init__(self, ref_audio: np.ndarray, deg_audio: np.ndarray, fs: int):
         """
         Initializes the evaluator with audio data.
@@ -222,6 +224,7 @@ def main():
         print(f"Results appended to {os.path.join(OUTPUT_PATH, HISTORY_FILE)}")
     except Exception as e:
         print(f"\nFATAL ERROR: Could not write to history file. {e}")
-
+    
 if __name__ == "__main__":
+
     main()
