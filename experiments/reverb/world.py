@@ -2,7 +2,6 @@
 python world.py --reverb --dataset ljspeech --n 3
 '''
 
-
 import numpy as np
 import soundfile as sf
 import os
@@ -63,7 +62,10 @@ def get_audio_files(dataset_name, n_needed):
         return []
 
 def add_awgn(signal, snr_db):
-    """Adds noise to a signal at a specific SNR."""
+    """
+    Adds noise to a signal at a specific SNR.
+    Returns the noisy signal.
+    """
     sig_power = np.mean(signal ** 2)
     if sig_power == 0: return signal
     noise_power = sig_power / (10 ** (snr_db / 10))
@@ -72,7 +74,7 @@ def add_awgn(signal, snr_db):
 
 def main():
     # --- 0. Argument Parsing ---
-    parser = argparse.ArgumentParser(description="Cocktail Party Simulator (Task 4)")
+    parser = argparse.ArgumentParser(description="Cocktail Party Simulator (Task 5)")
     
     # 1. Reverb Flag (Default: True)
     parser.add_argument('--reverb', action='store_true', default=True, help="Enable reverb (default)")
@@ -111,7 +113,7 @@ def main():
 
     # --- 2. Setup Room ---
     if args.reverb:
-        # Reverb Mode: Calculate absorption from RT60
+        # Reverb Mode: Calculate absorption from RT60 (Allen & Berkley Image Method)
         e_absorption, max_order = pra.inverse_sabine(RT60_TARGET, ROOM_DIM)
         materials = pra.Material(e_absorption)
         # max_order usually defaults high (e.g. 15-20) for reverb
@@ -135,10 +137,8 @@ def main():
         
         # Remaining interferers (if n > 1) are Random
         for _ in range(args.n - 1):
-            # Simple random placement within room boundaries (padding 1m from walls)
             rx = random.uniform(1.0, ROOM_DIM[0]-1.0)
             ry = random.uniform(1.0, ROOM_DIM[1]-1.0)
-            # Keeping height same as others for simplicity, or random z
             room.add_source([rx, ry, 1.5])
 
     # --- 4. Compute RIRs ---
@@ -151,7 +151,6 @@ def main():
         return fftconvolve(sig, rir, mode='full')[:min_len]
 
     # Process Target
-    # room.rir[mic_idx][source_idx]
     target_ch1 = get_convolved(target_sig, room.rir[0][0])
     target_ch2 = get_convolved(target_sig, room.rir[1][0])
 
@@ -184,27 +183,45 @@ def main():
         interf_ch1_total *= gain
         interf_ch2_total *= gain
     
-    # Mix
-    mix_ch1 = target_ch1 + interf_ch1_total
-    mix_ch2 = target_ch2 + interf_ch2_total
+    # Clean Mixture (No Noise)
+    clean_mix_ch1 = target_ch1 + interf_ch1_total
+    clean_mix_ch2 = target_ch2 + interf_ch2_total
 
     # --- 7. Add Noise (SNR Control) ---
     print(f"Adding AWGN at {SNR_TARGET_DB}dB SNR")
-    final_ch1 = add_awgn(mix_ch1, SNR_TARGET_DB)
-    final_ch2 = add_awgn(mix_ch2, SNR_TARGET_DB)
+    final_ch1 = add_awgn(clean_mix_ch1, SNR_TARGET_DB)
+    final_ch2 = add_awgn(clean_mix_ch2, SNR_TARGET_DB)
 
-    # --- 8. Save ---
-    stereo_out = np.stack([final_ch1, final_ch2], axis=1)
+    # --- 8. Normalization & Saving (Task 5) ---
     
-    # Peak Normalization
-    peak = np.max(np.abs(stereo_out)) + 1e-9
-    stereo_out /= peak
+    # Stack Stereo Signals
+    # Mixture (Noisy)
+    stereo_mix = np.stack([final_ch1, final_ch2], axis=1)
+    
+    # Target Reference (Clean, Reverberant)
+    stereo_target = np.stack([target_ch1, target_ch2], axis=1)
+    
+    # Interference Reference (Clean, Reverberant)
+    stereo_interf = np.stack([interf_ch1_total, interf_ch2_total], axis=1)
+    
+    # Global Peak Normalization (Based on the Noisy Mixture)
+    # We apply the SAME scalar to all files to preserve the energy ratios (SIR/SNR).
+    peak = np.max(np.abs(stereo_mix)) + 1e-9
+    
+    stereo_mix /= peak
+    stereo_target /= peak
+    stereo_interf /= peak
 
-    mode_str = "reverb" if args.reverb else "anechoic"
-    out_name = f"mixture.wav"
-    sf.write(out_name, stereo_out, FS)
+    # Save Files
+    sf.write("mixture.wav", stereo_mix, FS)
+    sf.write("target.wav", stereo_target, FS)
+    sf.write("interference.wav", stereo_interf, FS)
     
-    print(f"Simulation Complete. Saved: {out_name}")
+    print(f"Simulation Complete.")
+    print(f"Generated Files:")
+    print(f"  1. mixture.wav      (Target + Interf + Reverb + Noise)")
+    print(f"  2. target.wav       (Target + Reverb [Reference])")
+    print(f"  3. interference.wav (Interf + Reverb [Reference])")
 
 if __name__ == "__main__":
     main()
