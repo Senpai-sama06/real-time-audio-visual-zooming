@@ -85,9 +85,9 @@ def load_and_align_signals(output_file_full_path, output_path):
         s_est, _ = sf.read(output_file_full_path, dtype='float32')
         
         # Load reference files using the output_path
-        s_tgt_ref, _ = sf.read(os.path.join(output_path, "target_reference.wav"), dtype='float32')
-        s_int_ref, _ = sf.read(os.path.join(output_path, "interference_reference.wav"), dtype='float32')
-        s_mix, _ = sf.read(os.path.join(output_path, "mixture_3_sources.wav"), dtype='float32')
+        s_tgt_ref, _ = sf.read(os.path.join(output_path, "target.wav"), dtype='float32')
+        s_int_ref, _ = sf.read(os.path.join(output_path, "interference.wav"), dtype='float32')
+        s_mix, _ = sf.read(os.path.join(output_path, "mixture.wav"), dtype='float32')
         
     except FileNotFoundError as e:
         missing_file = str(e).split("'")[1]
@@ -161,8 +161,8 @@ def main():
     
     # --- HARDCODED PATH DEFINITIONS (Modify these for your setup) ---
     # OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    BASE_FILENAME = "hybrid_null_mixture"
+    OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/reverb/sample/"
+    BASE_FILENAME = "enhanced_physics_hybrid"
     # BASE_FILENAME = "duet_target_90deg"
     # BASE_FILENAME = "output_neural_zoom_5"
     

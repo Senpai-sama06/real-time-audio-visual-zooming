@@ -17,7 +17,7 @@ from scipy.signal import fftconvolve
 FS = 16000          
 ROOM_DIM = [4.9, 4.9, 4.9] 
 RT60_TARGET = 0.5   
-SNR_TARGET_DB = 15  
+SNR_TARGET_DB = 5  
 SIR_TARGET_DB = 0   
 
 # Mic Array (Center of room, 8cm spacing)
