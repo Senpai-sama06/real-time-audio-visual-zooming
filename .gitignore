@@ -25,6 +25,7 @@ htmlcov/
 # Virtual environment directories (common names)
 venv/
 env/
+tf310/
 
 # Specific virtual env name from your prompt
 enigma/
