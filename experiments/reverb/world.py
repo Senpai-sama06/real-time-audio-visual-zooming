@@ -17,7 +17,7 @@ from scipy.signal import fftconvolve
 FS = 16000          
 ROOM_DIM = [4.9, 4.9, 4.9] 
 RT60_TARGET = 0.5   
-SNR_TARGET_DB = 5   
+SNR_TARGET_DB = 15  
 SIR_TARGET_DB = 0   
 
 # Mic Array (Center of room, 8cm spacing)
@@ -95,6 +95,15 @@ def main():
     total_sources = 1 + args.n
     files = get_audio_files(args.dataset, total_sources)
     if len(files) < total_sources: return
+
+    # --- NEW CODE START: Print Selected Files ---
+    print("\n" + "="*40)
+    print("SELECTED AUDIO SOURCES:")
+    print(f"  [TARGET]      : {os.path.basename(files[0])}")
+    for i, f_path in enumerate(files[1:]):
+        print(f"  [INTERFERER {i+1}]: {os.path.basename(f_path)}")
+    print("="*40 + "\n")
+    # --- NEW CODE END ---
 
     # Load and normalize length
     sigs = []
@@ -213,9 +222,9 @@ def main():
     stereo_interf /= peak
 
     # Save Files
-    sf.write("mixture.wav", stereo_mix, FS)
-    sf.write("target.wav", stereo_target, FS)
-    sf.write("interference.wav", stereo_interf, FS)
+    sf.write("sample/mixture.wav", stereo_mix, FS)
+    sf.write("sample/target.wav", stereo_target, FS)
+    sf.write("sample/interference.wav", stereo_interf, FS)
     
     print(f"Simulation Complete.")
     print(f"Generated Files:")
