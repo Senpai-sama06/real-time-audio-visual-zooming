@@ -162,9 +162,9 @@ def main():
     # --- HARDCODED PATH DEFINITIONS (Modify these for your setup) ---
     # OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
     OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/reverb/sample/"
-    BASE_FILENAME = "enhanced_physics_hybrid"
+    # BASE_FILENAME = "enh_mix"
     # BASE_FILENAME = "duet_target_90deg"
-    # BASE_FILENAME = "output_neural_zoom_5"
+    BASE_FILENAME = "output_oracle"
     
     # Construct the full path for the estimated signal
     output_file_full_path = os.path.join(OUTPUT_PATH, f"{BASE_FILENAME}.wav")

@@ -1,5 +1,5 @@
 '''
-python world.py --reverb --dataset ljspeech --n 3
+python world.py --no-reverb --dataset ljspeech --n 1
 '''
 
 import numpy as np
@@ -17,7 +17,7 @@ from scipy.signal import fftconvolve
 FS = 16000          
 ROOM_DIM = [4.9, 4.9, 4.9] 
 RT60_TARGET = 0.5   
-SNR_TARGET_DB = 5  
+SNR_TARGET_DB = 5
 SIR_TARGET_DB = 0   
 
 # Mic Array (Center of room, 8cm spacing)
@@ -70,7 +70,7 @@ def add_awgn(signal, snr_db):
     if sig_power == 0: return signal
     noise_power = sig_power / (10 ** (snr_db / 10))
     noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
-    return signal + noise
+    return signal 
 
 def main():
     # --- 0. Argument Parsing ---

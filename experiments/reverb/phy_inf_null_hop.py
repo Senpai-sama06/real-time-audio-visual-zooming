@@ -5,6 +5,7 @@ import scipy.signal
 import json
 import os
 import time
+import matplotlib.pyplot as plt
 
 # --- 1. Load Config ---
 if not os.path.exists("config.json"): 
@@ -240,6 +241,6 @@ def process_audio_file(input_path, output_path, model_path="mask_estimator_phy.t
 
 if __name__ == "__main__":
     if os.path.exists("sample/mixture.wav") and os.path.exists("mask_estimator_phy.tflite"):
-        process_audio_file("sample/mixture.wav", "enhanced_physics_hybrid.wav")
+        process_audio_file("sample/mixture.wav", "sample/enh_mix.wav")
     else:
         print("Ensure 'mixture_TEST.wav' and 'mask_estimator_phy.tflite' exist.")
