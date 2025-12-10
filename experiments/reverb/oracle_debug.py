@@ -4,120 +4,103 @@ import soundfile as sf
 import os
 import matplotlib.pyplot as plt
 import matplotlib as mlt
-mlt.use("TkAgg")
+# mlt.use("TkAgg") # Removed line if you are running in a notebook/non-GUI environment
+
+# --- Import Core Constants and Helpers ---
+# We reuse the constants and steering vector function from the core MVDR module
+from rt_av_zoom.core.masked_mvdr import (
+    get_steering_vector, 
+    D, 
+    C, 
+    N_MICS, 
+    FS, 
+    N_FFT, 
+    N_HOP
+)
 
 # --- Constants ---
-FS = 16000
-N_MICS = 2
-N_FFT = 256
-N_HOP = 128
-D = 0.08  
-C = 343.0
+# ANGLE_TARGET is still needed locally as it's a specific experiment parameter
 ANGLE_TARGET = 90.0
-SIGMA = 1
-SAVE_DIR = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/reverb/sample"
-
-def get_steering_vector(angle_deg, f, d, c):
-    theta_rad = np.deg2rad(angle_deg)
-    phi_rad = 0.0
-    tau_m1 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - 0) / c
-    tau_m2 = (d / 2) * np.cos(phi_rad) * np.cos(theta_rad - np.pi) / c
-    omega = 2 * np.pi * f
-    d_vec = np.array([[np.exp(-1j * omega * tau_m1)],
-                      [np.exp(-1j * omega * tau_m2)]], dtype=complex)
-    return d_vec
-
-def load_mono(path):
-    """Load audio and force it to mono if stereo."""
-    x, _ = sf.read(path)
-    if x.ndim > 1:
-        x = x[:, 0]   # Take channel 1
-    return x.astype(np.float32)
+SIGMA = 1 # Specific to this debug/oracle run
 
 def main():
-    print("--- ORACLE TEST: Theoretical Upper Bound Validation ---")
-
-    # Check files
-    if not os.path.exists(f"{SAVE_DIR}/target.wav") or not os.path.exists(f"{SAVE_DIR}/interference.wav"):
+    print("--- ORACLE TEST: Can the code theoretically work? ---")
+    
+    # 1. Load The "Answer Key" Files
+    if not os.path.exists(r"C:\Users\DHRUV SINGH\Documents\real-time-audio-visual-zooming\Final_pipeline\data\simulated\sample_test_2\target.wav") or not os.path.exists(r"C:\Users\DHRUV SINGH\Documents\real-time-audio-visual-zooming\Final_pipeline\data\simulated\sample_test_2\interference.wav"):
         print("Error: Reference files missing. Run world.py first.")
-        return  
+        return
 
-    # Load mixture (stereo)
-    y_mix, _ = sf.read(f"{SAVE_DIR}/mixture.wav", dtype='float32')
-    y_mix = y_mix.T  # (2, samples)
+    y_mix, _ = sf.read(r"C:\Users\DHRUV SINGH\Documents\real-time-audio-visual-zooming\Final_pipeline\data\simulated\sample_test_2\mixture.wav", dtype='float32') # [Samples, 2]
+    y_mix = y_mix.T 
+    
+    s_tgt_ref, _ = sf.read(r"C:\Users\DHRUV SINGH\Documents\real-time-audio-visual-zooming\Final_pipeline\data\simulated\sample_test_2\target.wav", dtype='float32')
+    s_int_ref, _ = sf.read(r"C:\Users\DHRUV SINGH\Documents\real-time-audio-visual-zooming\Final_pipeline\data\simulated\sample_test_2\interference.wav", dtype='float32')
+    s_tgt_ref = s_tgt_ref[:, 0] 
+    s_int_ref = s_int_ref[:, 0]
+    
+    print("y_mix:", y_mix.shape)
 
-    # Load clean oracle signals (mono)
-    s_tgt_ref = load_mono(f"{SAVE_DIR}/target.wav")
-    s_int_ref = load_mono(f"{SAVE_DIR}/interference.wav")
+    print("s_tgt_ref:", s_tgt_ref.shape)
+    print("s_int_ref:", s_int_ref.shape)
 
-    # --- Compute STFTs (all consistent) ---
-    f, t, Y_mix = scipy.signal.stft(
-        y_mix, fs=FS, nperseg=N_FFT, noverlap=N_HOP
-    )  # (2, F, T)
+    # 2. Compute STFTs (Using imported N_FFT and N_HOP)
+    f, t, Y_mix = scipy.signal.stft(y_mix, fs=FS, nperseg=N_FFT, noverlap=N_FFT - N_HOP)
+    _, _, S_tgt = scipy.signal.stft(s_tgt_ref, fs=FS, nperseg=N_FFT, noverlap=N_FFT - N_HOP)
+    _, _, S_int = scipy.signal.stft(s_int_ref, fs=FS, nperseg=N_FFT, noverlap=N_FFT - N_HOP)
 
-    _, _, S_tgt = scipy.signal.stft(
-        s_tgt_ref, fs=FS, nperseg=N_FFT, noverlap=N_HOP
-    )  # (F, T)
+    print("Oracle Mask created directly from ground truth files.")
 
-    _, _, S_int = scipy.signal.stft(
-        s_int_ref, fs=FS, nperseg=N_FFT, noverlap=N_HOP
-    )  # (F, T)
-
-    # 3. SOFT ORACLE MASK
+    # 3. Construct the ORACLE MASK (The Cheat)
     mag_tgt = np.abs(S_tgt)
     mag_int = np.abs(S_int)
+    
+    # Ideal Binary Mask (IBM)
+    mask_noise = np.where(mag_int > mag_tgt, 1.0, 0.0)
 
-    eps = 1e-6
-    mask_target = mag_tgt / (mag_tgt + mag_int + eps)   # soft mask in [0,1]
-    mask_noise = 1.0 - mask_target
-
-    print("Soft mask generated from ground truth magnitude comparison.")
-
-    # 4. Noise covariance estimation
+    # 4. Run the Pipeline (Exact same logic as before)
     n_channels, n_freqs, n_frames = Y_mix.shape
     R_noise = np.zeros((n_freqs, n_channels, n_channels), dtype=complex)
-
-    print("Computing noise covariance via soft-masked mixture...")
-
+    
+    print("Computing Covariance...")
     for f_idx in range(n_freqs):
-        m_f = mask_noise[f_idx, :]  # shape (T,)
-        Y_f = Y_mix[:, f_idx, :]    # (2, T)
-        Y_weighted = Y_f * np.sqrt(m_f)
-
+        m_f = mask_noise[f_idx, :] 
+        Y_f = Y_mix[:, f_idx, :] 
+        Y_weighted = Y_f * np.sqrt(m_f) 
         R_noise[f_idx] = (Y_weighted @ Y_weighted.conj().T) / (np.sum(m_f) + 1e-6)
 
-    # 5. MVDR beamformer
     print("Running MVDR...")
-
     S_mvdr = np.zeros((n_freqs, n_frames), dtype=complex)
-
     for f_idx in range(n_freqs):
-        # avoid DC/very low frequency
-        if f[f_idx] < 100:
-            continue
-
-        R = R_noise[f_idx] + SIGMA * np.eye(n_channels)
-        d = get_steering_vector(ANGLE_TARGET, f[f_idx], D, C)
-
+        if f[f_idx] < 100: continue 
+        R = R_noise[f_idx] + SIGMA * np.eye(N_MICS) # Use imported N_MICS
+        
+        # Use imported get_steering_vector and constants
+        d = get_steering_vector(ANGLE_TARGET, f[f_idx], D, C) 
+        
         try:
             w = np.linalg.solve(R, d)
             w /= (d.conj().T @ w + 1e-10)
         except:
             w = np.array([[1], [0]])
-
         S_mvdr[f_idx, :] = w.conj().T @ Y_mix[:, f_idx, :]
 
-    # 6. Apply post-filter (soft mask)
-    print("Applying soft post-filter...")
-    S_final = S_mvdr * mask_target
-
-    # 7. ISTFT reconstruction
+    print("Applying Aggressive Post-Filter...")
+    # INVERT Mask: 1 = Target, 0 = Noise
+    mask_target = 1.0 - mask_noise 
+    
+    gain_filter = mask_target 
+    # plt.imshow(np.abs(S_final)) # Plotting code removed for non-GUI execution stability
+    # plt.show()
+    
+    S_final = S_mvdr * gain_filter
+    
+    # 5. Reconstruction
     _, s_out = scipy.signal.istft(S_final, fs=FS, nperseg=N_FFT, noverlap=N_HOP)
-    s_out /= np.max(np.abs(s_out) + 1e-10)
-
-    sf.write(f"{SAVE_DIR}/output_oracle.wav", s_out, FS)
-    print(f"Saved: {SAVE_DIR}/output_oracle.wav")
-    print("Run validate.py on this result.")
+    s_out /= np.max(np.abs(s_out))
+    
+    sf.write("output_oracle.wav", s_out, FS)
+    print("Saved 'output_oracle.wav'.")
 
 if __name__ == "__main__":
     main()
