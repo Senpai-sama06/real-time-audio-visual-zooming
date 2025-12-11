@@ -32,9 +32,9 @@ POS_INTERF_FIXED = [3.22, 3.06, 1.5] # ~40 degrees
 
 # --- 2. Helper Functions ---
 
-def get_audio_files(dataset_name, n_needed):
-    """Fetches n_needed random audio files."""
-    print(f"--- Fetching {n_needed} files from: {dataset_name} ---")
+def get_audio_files(dataset_name, n_needed, min_duration=5.0):
+    """Fetches n_needed random audio files that are at least min_duration seconds long."""
+    print(f"--- Fetching {n_needed} files (>= {min_duration}s) from: {dataset_name} ---")
     files = []
     try:
         if dataset_name == 'librispeech':
@@ -49,14 +49,38 @@ def get_audio_files(dataset_name, n_needed):
             wav_path = os.path.join(path, "LJSpeech-1.1", "wavs")
             files = glob.glob(os.path.join(wav_path, "*.wav"))
         
-        # Handle case where we need more files than exist (duplicate if needed)
-        if len(files) < n_needed:
-            if len(files) == 0: raise ValueError(f"No files found for {dataset_name}")
-            print(f"Warning: Only {len(files)} files found. Duplicating to reach {n_needed}.")
-            while len(files) < n_needed:
-                files += files
+        if len(files) == 0: 
+            raise ValueError(f"No files found for {dataset_name}")
+
+        # Shuffle to ensure random selection
+        random.shuffle(files)
         
-        return random.sample(files, n_needed)
+        valid_files = []
+        print("Scanning files for duration requirements...")
+        
+        # Iterate through shuffled files and pick those that meet the duration requirement
+        for f in files:
+            if len(valid_files) >= n_needed:
+                break
+            try:
+                # Use sf.info to check duration without loading the full file (much faster)
+                info = sf.info(f)
+                if info.duration >= min_duration:
+                    valid_files.append(f)
+            except Exception as e:
+                continue
+
+        # Handle case where we didn't find enough valid files
+        if len(valid_files) < n_needed:
+            print(f"Warning: Only found {len(valid_files)} valid files >= {min_duration}s. Duplicating to reach {n_needed}.")
+            if len(valid_files) == 0:
+                 raise ValueError("No files found meeting the duration requirement.")
+            while len(valid_files) < n_needed:
+                valid_files += valid_files
+            valid_files = valid_files[:n_needed]
+        
+        return valid_files
+
     except Exception as e:
         print(f"Error getting data: {e}")
         return []
@@ -70,7 +94,7 @@ def add_awgn(signal, snr_db):
     if sig_power == 0: return signal
     noise_power = sig_power / (10 ** (snr_db / 10))
     noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
-    return signal + noise
+    return signal + noise, noise
 
 def main():
     # --- 0. Argument Parsing ---
@@ -182,11 +206,11 @@ def main():
     p_target = np.mean(target_ch1 ** 2)
     p_interf = np.mean(interf_ch1_total ** 2)
     
-    gain = 0.0
+    gain = 1
     if args.n > 0 and p_interf > 0:
         # SIR = 10 log10 (P_t / (g^2 * P_i))
         # g = sqrt( P_t / (P_i * 10^(SIR/10)) )
-        gain = np.sqrt(p_target / (p_interf * (10**(SIR_TARGET_DB/10))))
+        # gain = np.sqrt(p_target / (p_interf * (10**(SIR_TARGET_DB/10))))
         print(f"Applying Gain {gain:.4f} to Interferers for {SIR_TARGET_DB}dB SIR")
         
         interf_ch1_total *= gain
@@ -198,12 +222,16 @@ def main():
 
     # --- 7. Add Noise (SNR Control) ---
     print(f"Adding AWGN at {SNR_TARGET_DB}dB SNR")
-    final_ch1 = add_awgn(clean_mix_ch1, SNR_TARGET_DB)
-    final_ch2 = add_awgn(clean_mix_ch2, SNR_TARGET_DB)
+    final_ch1, noise_ch1 = add_awgn(clean_mix_ch1, SNR_TARGET_DB)
+    final_ch2, noise_ch2 = add_awgn(clean_mix_ch2, SNR_TARGET_DB)
 
     # --- 8. Normalization & Saving (Task 5) ---
     
     # Stack Stereo Signals
+
+    # noise
+    stereo_noise = np.stack([noise_ch1, noise_ch2], axis=1)
+
     # Mixture (Noisy)
     stereo_mix = np.stack([final_ch1, final_ch2], axis=1)
     
@@ -220,17 +248,20 @@ def main():
     stereo_mix /= peak
     stereo_target /= peak
     stereo_interf /= peak
+    stereo_noise /= peak
 
     # Save Files
     sf.write("sample/mixture.wav", stereo_mix, FS)
     sf.write("sample/target.wav", stereo_target, FS)
     sf.write("sample/interference.wav", stereo_interf, FS)
+    sf.write("sample/noise.wav", stereo_noise, FS)
     
     print(f"Simulation Complete.")
     print(f"Generated Files:")
     print(f"  1. mixture.wav      (Target + Interf + Reverb + Noise)")
     print(f"  2. target.wav       (Target + Reverb [Reference])")
     print(f"  3. interference.wav (Interf + Reverb [Reference])")
+    print(f"  4. noise.wav (noise)")
 
 if __name__ == "__main__":
     main()
