@@ -164,7 +164,8 @@ def main():
     OUTPUT_PATH = "/home/rpzrm/global/projects/real-time-audio-visual-zooming/experiments/reverb/sample/"
     # BASE_FILENAME = "enh_mix"
     # BASE_FILENAME = "duet_target_90deg"
-    BASE_FILENAME = "output_oracle_smvb_noiseaware"
+    # BASE_FILENAME = "output_unified_mvdr"
+    BASE_FILENAME = "output_unified_smvb"
     
     # Construct the full path for the estimated signal
     output_file_full_path = os.path.join(OUTPUT_PATH, f"{BASE_FILENAME}.wav")

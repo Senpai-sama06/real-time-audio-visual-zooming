@@ -57,7 +57,12 @@ def hybrid_hard_null_bf(Y, mask, f_bins):
 
         Y_f = Y[:, i, :]         # (2, T)
         m_int = mask_int[i, :]   # (T,)
+        
 
+        # made changes such that no masking occurs
+        # m_int = 1
+
+        
         denom = np.sum(m_int) + 1e-6
         R_int = (Y_f * m_int) @ (Y_f.conj().T) / denom
 

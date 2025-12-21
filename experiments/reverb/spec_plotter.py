@@ -46,8 +46,8 @@ def plot_spectrograms_side_by_side(audio_file_1, audio_file_2):
 
 # --- Usage ---
 # Replace these strings with your actual file paths
-file_path_1 = 'sample/output_oracle_nw_mvdr.wav'
+file_path_1 = 'sample/output_oracle_mvdr_hrnr_gated.wav'
 file_path_2 = 'sample/target.wav'
 
 # Uncomment the line below to run it immediately if you have files ready
-plot_spectrograms_side_by_side(file_path_1, file_path_2)
+plot_spectrograms_side_by_side(file_path_1, file_path_2)    

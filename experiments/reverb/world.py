@@ -93,7 +93,8 @@ def add_awgn(signal, snr_db):
     sig_power = np.mean(signal ** 2)
     if sig_power == 0: return signal
     noise_power = sig_power / (10 ** (snr_db / 10))
-    noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
+    # noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
+    noise = np.zeros(signal.shape)
     return signal + noise, noise
 
 def main():

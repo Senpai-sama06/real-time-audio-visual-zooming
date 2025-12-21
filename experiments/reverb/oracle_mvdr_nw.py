@@ -90,6 +90,8 @@ def main():
         Yf = Y_mix[:, f_idx, :]            # (2, T)
         Yw = Yf * w                        # broadcast (2, T)
         denom = np.sum(w ** 2) + 1e-8
+        # print(np.shape(denom))
+        # denom = 1
         Rn[f_idx] = (Yw @ Yw.conj().T) / denom
 
     # MVDR beamforming
