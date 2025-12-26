@@ -5,7 +5,7 @@ import sys
 import datetime 
 from typing import Union, Tuple
 
-# External Libraries required for Objective Metrics
+# External Libraries
 try:
     from pystoi import stoi
     from pesq import pesq
@@ -14,56 +14,40 @@ except ImportError:
     sys.exit(1)
 
 
-# --- PESQ EVALUATOR CLASS ---
+# --- CONFIGURATION ---
+FS = 16000 
+HISTORY_FILE = "evaluation_history.txt"
+
+
+# --- PESQ EVALUATOR CLASS (Fixed for Data Types) ---
 
 class PESQEvaluator:
-
-    """
-    An object-oriented class for calculating the Perceptual Evaluation of Speech
-    Quality (PESQ) score between a reference and a degraded audio signal.
-    """
-    
     def __init__(self, ref_audio: np.ndarray, deg_audio: np.ndarray, fs: int):
-        """
-        Initializes the evaluator with audio data.
-        """
         self.fs = fs
         self.ref_audio = ref_audio
         self.deg_audio = deg_audio
 
     def calculate_pesq(self, mode: str) -> float:
-        """
-        Calculates the PESQ score for a given mode.
-        """
         if self.fs is None or self.ref_audio is None or self.deg_audio is None:
             raise RuntimeError("Audio data was not loaded correctly.")
 
-        # Allow 16000 Hz for Narrow-Band, as the pesq library handles downsampling.
         if mode == 'nb' and self.fs not in [8000, 16000]:
-            raise ValueError(
-                f"Narrow-Band PESQ requires 8000 Hz or 16000 Hz input, but audio is {self.fs} Hz."
-            )
-        # Wide-Band requires exactly 16000 Hz.
+            raise ValueError(f"Narrow-Band PESQ requires 8k/16k Hz, but audio is {self.fs} Hz.")
         elif mode == 'wb' and self.fs != 16000:
-            raise ValueError(
-                f"Wide-Band PESQ requires 16000 Hz, but audio is {self.fs} Hz."
-            )
-        elif mode not in ['nb', 'wb']:
-            raise ValueError(f"Invalid mode: {mode}. Must be 'nb' or 'wb'.")
+            raise ValueError(f"Wide-Band PESQ requires 16000 Hz, but audio is {self.fs} Hz.")
 
-        score = pesq(self.fs, self.ref_audio, self.deg_audio, mode)
+        # FIX: Explicit cast to float32 for the C-wrapper
+        ref_32 = self.ref_audio.astype(np.float32)
+        deg_32 = self.deg_audio.astype(np.float32)
+
+        score = pesq(self.fs, ref_32, deg_32, mode)
         return score
 
     def evaluate(self) -> Tuple[float, float]:
-        """
-        Runs both Narrow-Band and Wide-Band evaluation, if supported by the fs.
-
-        Returns:
-            A tuple (nb_pesq_score, wb_pesq_score). Scores will be 0.0 if not supported.
-        """
         nb_score = 0.0
         wb_score = 0.0
 
+        # Run WB and NB based on Sampling Rate
         if self.fs == 16000:
             nb_score = self.calculate_pesq('nb')
             wb_score = self.calculate_pesq('wb')
@@ -72,125 +56,148 @@ class PESQEvaluator:
             
         return nb_score, wb_score
 
-# --- CONFIGURATION ---
-FS = 16000 
-HISTORY_FILE = "evaluation_history.txt"
 
+# --- DATA LOADING (Fixed for Sample Rate Safety) ---
 
 def load_and_align_signals(output_file_full_path, output_path):
-    """Loads all required files and aligns them to the minimum length."""
+    """Loads files, CHECKS FS, and aligns to minimum length."""
+    
+    files_to_load = {
+        "est": output_file_full_path,
+        "tgt": os.path.join(output_path, "target.wav"),
+        "int": os.path.join(output_path, "interference.wav"),
+        "mix": os.path.join(output_path, "mixture.wav")
+    }
+    
+    loaded_signals = {}
     
     try:
-        # Load the estimated signal
-        s_est, _ = sf.read(output_file_full_path, dtype='float32')
-        
-        # Load reference files using the output_path
-        s_tgt_ref, _ = sf.read(os.path.join(output_path, "target.wav"), dtype='float32')
-        s_int_ref, _ = sf.read(os.path.join(output_path, "interference.wav"), dtype='float32')
-        s_mix, _ = sf.read(os.path.join(output_path, "mixture.wav"), dtype='float32')
-        
-    except FileNotFoundError as e:
-        missing_file = str(e).split("'")[1]
-        print(f"Error loading files: Missing file '{missing_file}'. Ensure all files exist in the specified path.")
+        for key, path in files_to_load.items():
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"Missing file: {path}")
+            
+            data, samplerate = sf.read(path, dtype='float32')
+            
+            # FIX: Critical Sample Rate Check
+            if samplerate != FS:
+                print(f"CRITICAL ERROR: File {os.path.basename(path)} is {samplerate}Hz. Expected {FS}Hz.")
+                print("Evaluation aborted to prevent incorrect metrics.")
+                return None, None, None, None, None
+            
+            # Handle multi-channel (keep only first channel)
+            if len(data.shape) > 1: 
+                data = data[:, 0]
+                
+            loaded_signals[key] = data
+
+    except Exception as e:
+        print(f"Error loading files: {e}")
         return None, None, None, None, None
 
-    # Handle multi-channel (keep only first channel)
-    if len(s_mix.shape) > 1: s_mix = s_mix[:, 0]
-    if len(s_est.shape) > 1: s_est = s_est[:, 0]
-    if len(s_tgt_ref.shape) > 1: s_tgt_ref = s_tgt_ref[:, 0]
-    if len(s_int_ref.shape) > 1: s_int_ref = s_int_ref[:, 0]
-
     # Align to minimum length
-    min_len = min(len(s_est), len(s_tgt_ref), len(s_int_ref), len(s_mix))
+    min_len = min(len(loaded_signals["est"]), len(loaded_signals["tgt"]), 
+                  len(loaded_signals["int"]), len(loaded_signals["mix"]))
     
-    # Cast to float64 for PESQ compatibility
-    s_est = s_est[:min_len].astype(np.float64)
-    s_tgt_ref = s_tgt_ref[:min_len].astype(np.float64)
-    s_int_ref = s_int_ref[:min_len].astype(np.float64)
-    s_mix = s_mix[:min_len].astype(np.float64)
+    # FIX: Warn if large difference in length (indicative of mismatch)
+    if len(loaded_signals["est"]) != len(loaded_signals["tgt"]):
+        diff = abs(len(loaded_signals["est"]) - len(loaded_signals["tgt"]))
+        if diff > FS * 0.5: # More than 0.5 seconds difference
+            print(f"WARNING: Length mismatch detected ({diff} samples). Metrics might be affected if latency exists.")
+
+    # Cast to float64 for high-precision math (Si-SDR/OSINR)
+    # (Note: PESQ class now handles the downcast to float32 internally)
+    s_est = loaded_signals["est"][:min_len].astype(np.float64)
+    s_tgt = loaded_signals["tgt"][:min_len].astype(np.float64)
+    s_int = loaded_signals["int"][:min_len].astype(np.float64)
+    s_mix = loaded_signals["mix"][:min_len].astype(np.float64)
     
-    return s_est, s_tgt_ref, s_int_ref, s_mix, min_len
+    return s_est, s_tgt, s_int, s_mix, min_len
+
+
+def calculate_sisdr(reference, estimate):
+    """Calculates Scale-Invariant Signal-to-Distortion Ratio (SI-SDR)."""
+    eps = np.finfo(estimate.dtype).eps
+    
+    reference = reference - np.mean(reference)
+    estimate = estimate - np.mean(estimate)
+    
+    # Project estimate onto reference
+    alpha = np.dot(estimate, reference) / (np.dot(reference, reference) + eps)
+    
+    e_target = alpha * reference
+    e_res = estimate - e_target
+    
+    numerator = np.sum(e_target ** 2)
+    denominator = np.sum(e_res ** 2) + eps
+    
+    sisdr = 10 * np.log10(numerator / denominator)
+    return sisdr
+
 
 def calculate_osnr_and_osir(output_signal, target_ref, interf_ref):
     """Calculates OSINR and OSIR using projection method."""
-    
     floor_norm = 1e-10
     
-    # 1. Normalize all inputs to unit energy
+    # Normalize to unit energy
     target_ref = target_ref / (np.linalg.norm(target_ref) + floor_norm)
     interf_ref = interf_ref / (np.linalg.norm(interf_ref) + floor_norm)
 
-    # 2. Projection Method
+    # Projection
     alpha = np.dot(output_signal, target_ref)
     e_target = alpha * target_ref
+    # (target+interf+noise).target
     
     beta = np.dot(output_signal, interf_ref)
     e_interf = beta * interf_ref
     
-    # 3. Calculate Residual Error (Artifacts/Noise)
     e_artif_noise = output_signal - e_target - e_interf
     
-    # 4. Calculate Powers
     P_target = np.sum(e_target**2)
     P_interf = np.sum(e_interf**2)
     P_noise  = np.sum(e_artif_noise**2)
     
     floor_log = 1e-10           
     
-    # OSINR = 10 * log10( P_target / (P_interf + P_noise) )
     OSINR = 10 * np.log10( P_target / (P_interf + P_noise + floor_log) )
-    
-    # OSIR = 10 * log10( P_target / P_interf )
     OSIR = 10 * np.log10( P_target / (P_interf + floor_log) )
     
     return OSINR, OSIR, P_target, P_interf, P_noise
 
+
 def calculate_pesq_metric(target_ref, processed_signal, fs):
-    """Calculates PESQ Wide-Band and Narrow-Band scores."""
     try:
         evaluator = PESQEvaluator(target_ref, processed_signal, fs)
-        nb_score, wb_score = evaluator.evaluate()
-        return wb_score, nb_score
+        return evaluator.evaluate()
     except Exception as e:
         print(f"Warning: PESQ calculation failed: {e}")
-        return 0.0, 0.0 # Return 0.0 if calculation fails
+        return 0.0, 0.0
 
 
 def main():
     print("--- SP CUP 2026: Official Metrics Scoreboard ---")
     
-    # --- HARDCODED PATH DEFINITIONS (Modify these for your setup) ---
-    # OUTPUT_PATH = "/home/cse-sdpl/paarth/real-time-audio-visual-zooming/experiments/masked_mvdr_exp/samples"
-    OUTPUT_PATH = "/home/communications-lab/ramakrishna/real-time-audio-visual-zooming/experiments/smvb/model training/sample"
-    # BASE_FILENAME = "enh_mix"
-    BASE_FILENAME = "kaggle_test_3_enhanced"
-    # BASE_FILENAME = "output_unified_mvdr"
-    # BASE_FILENAME = "output_unified_smvb"
+    # --- PATHS (Modify as needed) ---
+    OUTPUT_PATH = "sample"
+    BASE_FILENAME = "sample_enhanced"
     
-    # Construct the full path for the estimated signal
     output_file_full_path = os.path.join(OUTPUT_PATH, f"{BASE_FILENAME}.wav")
     
-    # Load all signals (s_est = estimated, s_tgt = target, s_int = interference, s_mix = mixture)
+    # 1. Load Data
     s_est, s_tgt, s_int, s_mix, L = load_and_align_signals(output_file_full_path, OUTPUT_PATH)
     
-    if L is None: return
+    if L is None: return # Exit if loading failed
 
-    # --- 1. Calculate Metrics ---
-    
-    # Calculate baseline metrics for comparison (s_mix)
+    # 2. Calculate Metrics
+    # Baseline
     OSINR_b, OSIR_b, _, _, _ = calculate_osnr_and_osir(s_mix, s_tgt, s_int)
 
-    # Calculate solution metrics (s_est)
+    # Solution
     OSINR_s, OSIR_s, P_target_s, P_interf_s, P_noise_s = calculate_osnr_and_osir(s_est, s_tgt, s_int)
-    
-    # STOI
     STOI_score = stoi(s_tgt, s_est, FS)
-    
-    # PESQ
     PESQ_WB_score, PESQ_NB_score = calculate_pesq_metric(s_tgt, s_est, FS)
+    SiSDR_score = calculate_sisdr(s_tgt, s_est)
     
-    # --- 2. FORMAT OUTPUT ---
-    
+    # 3. Report
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     SIR_IMPROVEMENT = OSIR_s - OSIR_b
     
@@ -200,15 +207,16 @@ def main():
         f"FILE TESTED:        {os.path.basename(output_file_full_path)}",
         f"--------------------------------------------------------",
         f"BASELINE (Raw Mix):",
-        f"  Input SIR: {OSIR_b:.2f} dB",
+        f"  Input SIR:   {OSIR_b:.2f} dB",
         f"  Input OSINR: {OSINR_b:.2f} dB",
         f"--------------------------------------------------------",
         f"PROCESSED SIGNAL:",
-        f"  Output OSIR: {OSIR_s:.2f} dB",
-        f"  Output OSINR: {OSINR_s:.2f} dB",
-        f"  STOI Score:  {STOI_score:.4f}",
+        f"  Output OSIR:   {OSIR_s:.2f} dB",
+        f"  Output OSINR:  {OSINR_s:.2f} dB",
+        f"  STOI Score:    {STOI_score:.4f}",
         f"  PESQ-WB Score: {PESQ_WB_score:.4f}",
         f"  PESQ-NB Score: {PESQ_NB_score:.4f}",
+        f"  Si-SDR Score:  {SiSDR_score:.4f} dB",
         f"--------------------------------------------------------",
         f"TOTAL SIR IMPROVEMENT: +{SIR_IMPROVEMENT:.2f} dB",
         f"========================================================\n"
@@ -216,7 +224,6 @@ def main():
 
     report = "\n".join(report_lines)
     
-    # --- 3. APPEND TO HISTORY FILE ---
     try:
         with open(os.path.join(OUTPUT_PATH, HISTORY_FILE), 'a') as f:
             f.write(report)
@@ -227,5 +234,4 @@ def main():
         print(f"\nFATAL ERROR: Could not write to history file. {e}")
     
 if __name__ == "__main__":
-
     main()
