@@ -2,145 +2,32 @@
    BEAMFORMER COMPARISON STUDY: GEV vs HARD-NULLING     
 ========================================================
 
-Metrics Evaluated: PESQ, Si-SDR, Output SNR
+Mask Imperfection (Alpha): 1 (0=Perfect, 1=Random)
 SNR Range: -10dB to 30dB
-Interferers Tested: 1 to 7
 
---------------------------------------------------------
-   ANALYSIS FOR METRIC: PESQ
---------------------------------------------------------
+--- METRIC: PESQ ---
+[1 Interf] Avg: GEV=1.10 | HN=1.81 -> Winner: HN
+[2 Interf] Avg: GEV=1.10 | HN=1.80 -> Winner: HN
+[3 Interf] Avg: GEV=1.08 | HN=1.86 -> Winner: HN
+[4 Interf] Avg: GEV=1.18 | HN=1.82 -> Winner: HN
+[5 Interf] Avg: GEV=1.26 | HN=2.13 -> Winner: HN
+[6 Interf] Avg: GEV=1.25 | HN=1.87 -> Winner: HN
+[7 Interf] Avg: GEV=1.09 | HN=1.80 -> Winner: HN
 
-[Scenario: 1 Interferers]
-  > Average PESQ: GEV=1.73 | HN=1.74
-  > Winner: HN (by 0.00)
-  > At -10dB SNR: GEV=1.05 vs HN=1.08
-  > At +30dB SNR: GEV=3.55 vs HN=3.55
+--- METRIC: SISDR ---
+[1 Interf] Avg: GEV=-2.66 | HN=12.34 -> Winner: HN
+[2 Interf] Avg: GEV=-2.45 | HN=11.00 -> Winner: HN
+[3 Interf] Avg: GEV=-2.58 | HN=11.74 -> Winner: HN
+[4 Interf] Avg: GEV=-2.35 | HN=11.08 -> Winner: HN
+[5 Interf] Avg: GEV=-2.66 | HN=11.20 -> Winner: HN
+[6 Interf] Avg: GEV=-3.13 | HN=10.87 -> Winner: HN
+[7 Interf] Avg: GEV=-3.48 | HN=10.69 -> Winner: HN
 
-[Scenario: 2 Interferers]
-  > Average PESQ: GEV=1.75 | HN=1.74
-  > Winner: GEV (by 0.00)
-  > At -10dB SNR: GEV=1.04 vs HN=1.04
-  > At +30dB SNR: GEV=3.52 vs HN=3.51
-
-[Scenario: 3 Interferers]
-  > Average PESQ: GEV=1.81 | HN=1.81
-  > Winner: GEV (by 0.00)
-  > At -10dB SNR: GEV=1.04 vs HN=1.08
-  > At +30dB SNR: GEV=3.74 vs HN=3.73
-
-[Scenario: 4 Interferers]
-  > Average PESQ: GEV=1.76 | HN=1.76
-  > Winner: HN (by 0.00)
-  > At -10dB SNR: GEV=1.05 vs HN=1.04
-  > At +30dB SNR: GEV=3.69 vs HN=3.69
-
-[Scenario: 5 Interferers]
-  > Average PESQ: GEV=1.88 | HN=1.87
-  > Winner: GEV (by 0.01)
-  > At -10dB SNR: GEV=1.10 vs HN=1.08
-  > At +30dB SNR: GEV=3.72 vs HN=3.72
-
-[Scenario: 6 Interferers]
-  > Average PESQ: GEV=1.80 | HN=1.80
-  > Winner: GEV (by 0.00)
-  > At -10dB SNR: GEV=1.12 vs HN=1.10
-  > At +30dB SNR: GEV=3.82 vs HN=3.82
-
-[Scenario: 7 Interferers]
-  > Average PESQ: GEV=1.83 | HN=1.82
-  > Winner: GEV (by 0.00)
-  > At -10dB SNR: GEV=1.03 vs HN=1.03
-  > At +30dB SNR: GEV=3.86 vs HN=3.86
-
---------------------------------------------------------
-   ANALYSIS FOR METRIC: SISDR
---------------------------------------------------------
-
-[Scenario: 1 Interferers]
-  > Average SISDR: GEV=12.48 | HN=12.41
-  > Winner: GEV (by 0.08)
-  > At -10dB SNR: GEV=-7.47 vs HN=-7.62
-  > At +30dB SNR: GEV=32.27 vs HN=32.33
-
-[Scenario: 2 Interferers]
-  > Average SISDR: GEV=11.68 | HN=11.90
-  > Winner: HN (by 0.21)
-  > At -10dB SNR: GEV=-10.42 vs HN=-8.10
-  > At +30dB SNR: GEV=31.68 vs HN=31.70
-
-[Scenario: 3 Interferers]
-  > Average SISDR: GEV=11.31 | HN=11.26
-  > Winner: GEV (by 0.05)
-  > At -10dB SNR: GEV=-8.71 vs HN=-8.82
-  > At +30dB SNR: GEV=31.11 vs HN=31.15
-
-[Scenario: 4 Interferers]
-  > Average SISDR: GEV=11.60 | HN=11.55
-  > Winner: GEV (by 0.05)
-  > At -10dB SNR: GEV=-8.77 vs HN=-8.36
-  > At +30dB SNR: GEV=31.32 vs HN=31.35
-
-[Scenario: 5 Interferers]
-  > Average SISDR: GEV=11.48 | HN=11.43
-  > Winner: GEV (by 0.06)
-  > At -10dB SNR: GEV=-8.56 vs HN=-8.90
-  > At +30dB SNR: GEV=31.37 vs HN=31.40
-
-[Scenario: 6 Interferers]
-  > Average SISDR: GEV=11.45 | HN=11.35
-  > Winner: GEV (by 0.10)
-  > At -10dB SNR: GEV=-8.39 vs HN=-8.78
-  > At +30dB SNR: GEV=31.28 vs HN=31.29
-
-[Scenario: 7 Interferers]
-  > Average SISDR: GEV=11.25 | HN=11.17
-  > Winner: GEV (by 0.08)
-  > At -10dB SNR: GEV=-8.97 vs HN=-9.09
-  > At +30dB SNR: GEV=31.15 vs HN=31.15
-
---------------------------------------------------------
-   ANALYSIS FOR METRIC: SINR
---------------------------------------------------------
-
-[Scenario: 1 Interferers]
-  > Average SINR: GEV=12.48 | HN=12.41
-  > Winner: GEV (by 0.08)
-  > At -10dB SNR: GEV=-7.47 vs HN=-7.62
-  > At +30dB SNR: GEV=32.27 vs HN=32.33
-
-[Scenario: 2 Interferers]
-  > Average SINR: GEV=11.68 | HN=11.90
-  > Winner: HN (by 0.21)
-  > At -10dB SNR: GEV=-10.42 vs HN=-8.10
-  > At +30dB SNR: GEV=31.68 vs HN=31.70
-
-[Scenario: 3 Interferers]
-  > Average SINR: GEV=11.31 | HN=11.26
-  > Winner: GEV (by 0.05)
-  > At -10dB SNR: GEV=-8.71 vs HN=-8.82
-  > At +30dB SNR: GEV=31.11 vs HN=31.15
-
-[Scenario: 4 Interferers]
-  > Average SINR: GEV=11.60 | HN=11.55
-  > Winner: GEV (by 0.05)
-  > At -10dB SNR: GEV=-8.77 vs HN=-8.36
-  > At +30dB SNR: GEV=31.32 vs HN=31.35
-
-[Scenario: 5 Interferers]
-  > Average SINR: GEV=11.48 | HN=11.43
-  > Winner: GEV (by 0.06)
-  > At -10dB SNR: GEV=-8.56 vs HN=-8.90
-  > At +30dB SNR: GEV=31.37 vs HN=31.40
-
-[Scenario: 6 Interferers]
-  > Average SINR: GEV=11.45 | HN=11.35
-  > Winner: GEV (by 0.10)
-  > At -10dB SNR: GEV=-8.39 vs HN=-8.78
-  > At +30dB SNR: GEV=31.28 vs HN=31.29
-
-[Scenario: 7 Interferers]
-  > Average SINR: GEV=11.25 | HN=11.17
-  > Winner: GEV (by 0.08)
-  > At -10dB SNR: GEV=-8.97 vs HN=-9.09
-  > At +30dB SNR: GEV=31.15 vs HN=31.15
-
+--- METRIC: SINR ---
+[1 Interf] Avg: GEV=-2.67 | HN=12.34 -> Winner: HN
+[2 Interf] Avg: GEV=-2.45 | HN=11.00 -> Winner: HN
+[3 Interf] Avg: GEV=-2.58 | HN=11.74 -> Winner: HN
+[4 Interf] Avg: GEV=-2.35 | HN=11.08 -> Winner: HN
+[5 Interf] Avg: GEV=-2.66 | HN=11.20 -> Winner: HN
+[6 Interf] Avg: GEV=-3.13 | HN=10.87 -> Winner: HN
+[7 Interf] Avg: GEV=-3.48 | HN=10.69 -> Winner: HN

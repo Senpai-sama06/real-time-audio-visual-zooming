@@ -9,62 +9,69 @@ from pesq import pesq  # pip install pesq
 
 # --- 1. CONFIGURATION ---
 NUM_INTERFERERS_RANGE = range(1, 8)  
-INPUT_SNR_RANGE = range(-10, 31, 1)  
+INPUT_SNR_RANGE = range(-10, 31, 5)  
 FS = 16000
 FFT_SIZE = 512
 HOP_SIZE = 256
 
-# --- 2. METRIC FUNCTIONS (NEW) ---
+# --- [CONTROL KNOB] MASK IMPERFECTION ---
+# 0.0 = Perfect Oracle (Upper Bound)
+# 0.2 = Good Neural Network (Realistic)
+# 0.5 = Poor Neural Network
+# 1.0 = Random Noise
+MASK_ERROR_ALPHA = 1 
+
+# --- 2. METRIC FUNCTIONS ---
 
 def compute_sisdr(reference, estimate):
-    """
-    Scale-Invariant Signal-to-Distortion Ratio (Si-SDR).
-    Measures separation quality independent of gain.
-    """
-    # Ensure zero mean
+    """Scale-Invariant Signal-to-Distortion Ratio."""
     reference = reference - np.mean(reference)
     estimate = estimate - np.mean(estimate)
-    
-    # Calculate optimal scaling factor (alpha)
     dot_product = np.sum(reference * estimate)
     ref_energy = np.sum(reference ** 2) + 1e-10
     alpha = dot_product / ref_energy
-    
-    # Projection
     target_part = alpha * reference
     noise_part = estimate - target_part
-    
-    # Energy Ratios
-    e_target = np.sum(target_part ** 2) + 1e-10
-    e_noise = np.sum(noise_part ** 2) + 1e-10
-    
-    sisdr = 10 * np.log10(e_target / e_noise)
+    sisdr = 10 * np.log10(np.sum(target_part**2) / (np.sum(noise_part**2) + 1e-10))
     return sisdr
 
 def compute_output_snr(reference, estimate):
-    """
-    Standard Output SNR (Signal vs Residual).
-    """
-    # Align energy (simple scaling to minimize MSE)
-    # This approximates the 'true' signal component in the output
+    """Output SNR (Signal vs Residual)."""
     dot = np.sum(reference * estimate)
     ref_en = np.sum(reference**2) + 1e-10
     scale = dot / ref_en
-    
     error = estimate - (scale * reference)
-    
     p_sig = np.sum((scale * reference)**2)
     p_err = np.sum(error**2) + 1e-10
-    
     return 10 * np.log10(p_sig / p_err)
 
-# --- 3. BEAMFORMER FUNCTIONS ---
+# --- 3. MASK UTILS ---
+
+def degrade_mask(clean_mask, alpha):
+    """
+    Mixes the clean mask with uniform noise to simulate estimation errors.
+    """
+    if alpha <= 0:
+        return clean_mask
+    F, T = clean_mask.shape
+    random_mask = np.random.rand(F, T)
+    # Linear mix: (1-alpha)*Clean + alpha*Random
+    noisy_mask = (1 - alpha) * clean_mask + alpha * random_mask
+    return noisy_mask
+
+def compute_oracle_masks_from_files(target_wav, interf_wav, noise_wav):
+    target_stft = stft(target_wav) 
+    noise_complex_wav = interf_wav + noise_wav
+    noise_stft = stft(noise_complex_wav)
+    P_target = np.mean(np.abs(target_stft)**2, axis=2)
+    P_noise = np.mean(np.abs(noise_stft)**2, axis=2)
+    mask_speech = P_target / (P_target + P_noise + 1e-12)
+    return mask_speech
+
+# --- 4. BEAMFORMER FUNCTIONS ---
 
 def gev(stft_multichannel, mask_speech):
-    """
-    Implements Offline GEV Beamforming with BAN Post-Filtering.
-    Assumes Noise Mask = 1.0 - Speech Mask.
-    """
+    """Offline GEV Beamforming with BAN Post-Filtering."""
     F, T, M = stft_multichannel.shape
     stft_enhanced = np.zeros((F, T), dtype=np.complex64)
     mask_noise = 1.0 - mask_speech
@@ -112,9 +119,7 @@ def gev(stft_multichannel, mask_speech):
     return stft_enhanced
 
 def run_hn_lcmv(stft_multichannel, mask_noise):
-    """
-    Hard-Nulling (MVDR) Beamformer.
-    """
+    """Hard-Nulling (MVDR) Beamformer."""
     F, T, M = stft_multichannel.shape
     stft_enhanced = np.zeros((F, T), dtype=np.complex64)
     DIAG_LOAD_FACTOR = 1e-3 
@@ -146,7 +151,7 @@ def run_hn_lcmv(stft_multichannel, mask_noise):
         
     return stft_enhanced
 
-# --- 4. UTILS ---
+# --- 5. UTILS ---
 
 def stft(x):
     x = x.T 
@@ -157,71 +162,38 @@ def istft(X):
     t, x = scipy.signal.istft(X, fs=FS, nperseg=FFT_SIZE, noverlap=FFT_SIZE-HOP_SIZE)
     return x
 
-def compute_oracle_masks_from_files(target_wav, interf_wav, noise_wav):
-    target_stft = stft(target_wav) 
-    noise_complex_wav = interf_wav + noise_wav
-    noise_stft = stft(noise_complex_wav)
-    P_target = np.mean(np.abs(target_stft)**2, axis=2)
-    P_noise = np.mean(np.abs(noise_stft)**2, axis=2)
-    mask_speech = P_target / (P_target + P_noise + 1e-12)
-    return mask_speech
-
-# --- 5. REPORTING FUNCTION (NEW) ---
+# --- 6. REPORTING ---
 
 def write_comprehensive_report(results, filename="experiment_report.txt"):
-    """
-    Writes a detailed text summary of the comparison.
-    """
-    print(f"Generating summary report: {filename}...")
-    
+    print(f"Generating report: {filename}...")
     with open(filename, "w") as f:
         f.write("========================================================\n")
         f.write("   BEAMFORMER COMPARISON STUDY: GEV vs HARD-NULLING     \n")
         f.write("========================================================\n\n")
-        f.write(f"Metrics Evaluated: PESQ, Si-SDR, Output SNR\n")
+        f.write(f"Mask Imperfection (Alpha): {MASK_ERROR_ALPHA} (0=Perfect, 1=Random)\n")
         f.write(f"SNR Range: {min(INPUT_SNR_RANGE)}dB to {max(INPUT_SNR_RANGE)}dB\n")
-        f.write(f"Interferers Tested: {min(NUM_INTERFERERS_RANGE)} to {max(NUM_INTERFERERS_RANGE)}\n\n")
-
+        
         for metric in ['pesq', 'sisdr', 'sinr']:
-            f.write(f"--------------------------------------------------------\n")
-            f.write(f"   ANALYSIS FOR METRIC: {metric.upper()}\n")
-            f.write(f"--------------------------------------------------------\n")
-            
+            f.write(f"\n--- METRIC: {metric.upper()} ---\n")
             for n_interf in NUM_INTERFERERS_RANGE:
                 gev_scores = np.array(results['gev'][n_interf][metric])
                 hn_scores = np.array(results['hn'][n_interf][metric])
-                
                 avg_gev = np.mean(gev_scores)
                 avg_hn = np.mean(hn_scores)
                 diff = avg_gev - avg_hn
-                
                 winner = "GEV" if diff > 0 else "HN"
                 
-                f.write(f"\n[Scenario: {n_interf} Interferers]\n")
-                f.write(f"  > Average {metric.upper()}: GEV={avg_gev:.2f} | HN={avg_hn:.2f}\n")
-                f.write(f"  > Winner: {winner} (by {abs(diff):.2f})\n")
-                
-                # Check low SNR performance (-10dB)
-                idx_low = 0 # -10dB is first index
-                f.write(f"  > At -10dB SNR: GEV={gev_scores[idx_low]:.2f} vs HN={hn_scores[idx_low]:.2f}\n")
-                
-                # Check high SNR performance (30dB)
-                idx_high = -1 # 30dB is last index
-                f.write(f"  > At +30dB SNR: GEV={gev_scores[idx_high]:.2f} vs HN={hn_scores[idx_high]:.2f}\n")
-            
-            f.write("\n")
-            
-    print("Report generation complete.")
+                f.write(f"[{n_interf} Interf] Avg: GEV={avg_gev:.2f} | HN={avg_hn:.2f} -> Winner: {winner}\n")
+    print("Report complete.")
 
-# --- 6. PLOTTING FUNCTION (UPDATED) ---
+# --- 7. PLOTTING ---
 
 def plot_all_metrics(results):
     metrics = ['pesq', 'sisdr', 'sinr']
-    titles = ['PESQ (Perceptual Quality)', 'Si-SDR (Separation Quality)', 'Output SNR (Noise Reduction)']
+    titles = ['PESQ', 'Si-SDR', 'Output SNR']
     ylims = [(1.0, 4.6), (-5, 25), (-5, 25)]
     
     for metric, title, ylim in zip(metrics, titles, ylims):
-        print(f"Plotting {metric}...")
         fig, axes = plt.subplots(2, 4, figsize=(24, 12))
         axes = axes.flatten()
         
@@ -233,113 +205,91 @@ def plot_all_metrics(results):
             ax.plot(INPUT_SNR_RANGE, gev_data, 'b-o', label='GEV', linewidth=2)
             ax.plot(INPUT_SNR_RANGE, hn_data, 'r-s', label='HN', linewidth=2, linestyle='--')
             
-            ax.set_title(f"{n_interf} Interferer(s)", fontweight='bold')
+            ax.set_title(f"{n_interf} Interferer(s)")
             ax.set_xlabel("Input SINR (dB)")
             ax.set_ylabel(metric.upper())
             ax.set_ylim(ylim) 
             ax.grid(True, linestyle=':', alpha=0.6)
-            ax.legend(loc='lower right')
+            ax.legend()
             
         axes[7].axis('off')
-        plt.suptitle(f"Beamformer Comparison: {title}", fontsize=16)
+        plt.suptitle(f"{title} (Mask Error Alpha={MASK_ERROR_ALPHA})", fontsize=16)
         plt.tight_layout()
-        plt.savefig(f"results_{metric}.png")
-        plt.close() # Close plot to free memory
+        plt.savefig(f"results_{metric}_alpha{MASK_ERROR_ALPHA}.png")
+        plt.close()
 
-# --- 7. MAIN STUDY LOOP ---
+# --- 8. MAIN LOOP ---
 
 def main():
-    # Structure: results['gev'][n_interf]['pesq'] = [scores...]
     results = {
         'gev': {n: {'pesq': [], 'sisdr': [], 'sinr': []} for n in NUM_INTERFERERS_RANGE},
         'hn': {n: {'pesq': [], 'sisdr': [], 'sinr': []} for n in NUM_INTERFERERS_RANGE}
     }
     
     print("==================================================")
-    print("   STUDY: GEV vs HN (Oracle Clean-File Masks)     ")
+    print(f"   STUDY START | Mask Imperfection Alpha: {MASK_ERROR_ALPHA}   ")
     print("==================================================")
     
     for n_interf in NUM_INTERFERERS_RANGE:
-        print(f"\n[Scenario] Running World Sim for {n_interf} Interferer(s)...")
+        print(f"\n[Scenario] Simulating {n_interf} Interferer(s)...")
         subprocess.run(["python", "world.py", "--n", str(n_interf), "--reverb"], check=True)
         
-        # Load Raw Components (Stereo)
+        # Load & Truncate
         target_wav, _ = sf.read("sample/target.wav")
         interf_wav, _ = sf.read("sample/interference.wav")
         noise_wav, _ = sf.read("sample/noise.wav") 
-        
         min_len = min(len(target_wav), len(interf_wav), len(noise_wav))
-        target_wav = target_wav[:min_len]
-        interf_wav = interf_wav[:min_len]
-        noise_wav = noise_wav[:min_len]
+        target_wav, interf_wav, noise_wav = target_wav[:min_len], interf_wav[:min_len], noise_wav[:min_len]
         
-        print(f"  > Sweeping SNR for N={n_interf}...")
-
+        print(f"  > Sweeping SNR...")
         for target_snr in INPUT_SNR_RANGE:
-            # --- DYNAMIC MIXING ---
+            # Mix
             noise_complex = interf_wav + noise_wav
+            p_t = np.mean(target_wav**2)
+            p_n = np.mean(noise_complex**2)
+            scalar = 0 if p_n == 0 else np.sqrt(p_t / (p_n * 10**(target_snr/10)))
+            scaled_noise_complex = noise_complex * scalar
+            mixture = target_wav + scaled_noise_complex
             
-            p_target = np.mean(target_wav**2)
-            p_noise = np.mean(noise_complex**2)
+            # Masks
+            clean_mask_s = compute_oracle_masks_from_files(target_wav, interf_wav*scalar, noise_wav*scalar)
             
-            if p_noise == 0: scalar = 0
-            else:
-                req_ratio = 10**(target_snr / 10.0)
-                scalar = np.sqrt(p_target / (p_noise * req_ratio))
+            # --- APPLY CONTROLLED IMPERFECTION ---
+            mask_s = degrade_mask(clean_mask_s, MASK_ERROR_ALPHA)
+            mask_n = 1.0 - mask_s
             
-            scaled_interf = interf_wav * scalar
-            scaled_noise = noise_wav * scalar
-            mixture = target_wav + scaled_interf + scaled_noise
-            
-            # --- PROCESSING ---
-            m_speech = compute_oracle_masks_from_files(target_wav, scaled_interf, scaled_noise)
-            m_noise = 1.0 - m_speech
-            
+            # Process
             mix_stft = stft(mixture)
-            out_gev = istft(gev(mix_stft, m_speech))
-            out_hn = istft(run_hn_lcmv(mix_stft, m_noise))
+            out_gev = istft(gev(mix_stft, mask_s))
+            out_hn = istft(run_hn_lcmv(mix_stft, mask_n))
             
-            # --- EVALUATION ---
-            ref_sig = target_wav[:, 0]
-            L = min(len(ref_sig), len(out_gev), len(out_hn))
+            # Eval
+            ref = target_wav[:, 0]
+            L = min(len(ref), len(out_gev), len(out_hn))
+            ref, out_gev, out_hn = ref[:L], out_gev[:L], out_hn[:L]
             
-            # Truncate
-            ref_sig = ref_sig[:L]
-            out_gev = out_gev[:L]
-            out_hn = out_hn[:L]
-            
-            # 1. Si-SDR
-            sisdr_gev = compute_sisdr(ref_sig, out_gev)
-            sisdr_hn = compute_sisdr(ref_sig, out_hn)
-            
-            # 2. Output SNR
-            sinr_gev = compute_output_snr(ref_sig, out_gev)
-            sinr_hn = compute_output_snr(ref_sig, out_hn)
-            
-            # 3. PESQ (Normalized)
-            ref_n = ref_sig / (np.max(np.abs(ref_sig)) + 1e-9)
-            gev_n = out_gev / (np.max(np.abs(out_gev)) + 1e-9)
-            hn_n = out_hn / (np.max(np.abs(out_hn)) + 1e-9)
+            # Metrics
+            sisdr_g = compute_sisdr(ref, out_gev)
+            sisdr_h = compute_sisdr(ref, out_hn)
+            sinr_g = compute_output_snr(ref, out_gev)
+            sinr_h = compute_output_snr(ref, out_hn)
             
             try:
-                pesq_gev = pesq(FS, ref_n, gev_n, 'wb')
-                pesq_hn = pesq(FS, ref_n, hn_n, 'wb')
+                pesq_g = pesq(FS, ref/(np.max(np.abs(ref))+1e-9), out_gev/(np.max(np.abs(out_gev))+1e-9), 'wb')
+                pesq_h = pesq(FS, ref/(np.max(np.abs(ref))+1e-9), out_hn/(np.max(np.abs(out_hn))+1e-9), 'wb')
             except:
-                pesq_gev = 1.0
-                pesq_hn = 1.0
+                pesq_g, pesq_h = 1.0, 1.0
             
-            # Store
-            results['gev'][n_interf]['pesq'].append(pesq_gev)
-            results['gev'][n_interf]['sisdr'].append(sisdr_gev)
-            results['gev'][n_interf]['sinr'].append(sinr_gev)
+            results['gev'][n_interf]['pesq'].append(pesq_g)
+            results['gev'][n_interf]['sisdr'].append(sisdr_g)
+            results['gev'][n_interf]['sinr'].append(sinr_g)
             
-            results['hn'][n_interf]['pesq'].append(pesq_hn)
-            results['hn'][n_interf]['sisdr'].append(sisdr_hn)
-            results['hn'][n_interf]['sinr'].append(sinr_hn)
+            results['hn'][n_interf]['pesq'].append(pesq_h)
+            results['hn'][n_interf]['sisdr'].append(sisdr_h)
+            results['hn'][n_interf]['sinr'].append(sinr_h)
             
-            print(f"    SNR: {target_snr}dB | PESQ: {pesq_gev:.2f} | SiSDR: {sisdr_gev:.1f}")
+            print(f"    SNR: {target_snr}dB | PESQ: {pesq_g:.2f}/{pesq_h:.2f}")
 
-    # --- SAVE RESULTS ---
     plot_all_metrics(results)
     write_comprehensive_report(results)
 
