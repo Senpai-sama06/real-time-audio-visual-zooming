@@ -25,7 +25,7 @@ def run_batch(n_runs, start_idx=0, n_interferers=2):
                 dataset='ljspeech', # or 'musan'
                 reverb=True,
                 n_interferers=n_interferers,
-                snr_target=5
+                snr_target=50
             )
             
             if not mix_path: continue # Skip if sim failed
