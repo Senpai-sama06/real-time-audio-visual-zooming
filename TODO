@@ -11,3 +11,4 @@
 [inprocess] Work towards latency improvement -- pruning, quantization
 [pending] mobile deployment and app testing
 [pending] visual-guided covariance gating
+[pending] look into mobile hardware acceleration methods`
