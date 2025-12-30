@@ -1,0 +1,13 @@
+## PHASE 2
+
+[pending] Add TIMIT dataset and ChiME-6 dataset options too
+[done] Create a Male target speaker and a female interferer with a car sound as an interferer (or any non-speech interference).
+[inprocess] port code into MALTAB. Make sure to generate heuristic data such as room model (3D plot), time-domain acoustics, RIR transfer function, beamformer array pattern, spectrograms (after masking and after beamformer) etc.
+[pending] Add model usage options (RNN-BLSTM, CNN, PINN-CNN, Q-CNN etc)
+[pending] Change the switchmode beamformer to RMVB only since we are working with determined source separation.
+[inprocess] Beamwidth control mechanism prioritized
+[pending] DUET pipeline post-processing for faster source separation module (I think this would be useful for developping/validating the post-filter)
+[inprocess] Finalize the harmonic regeneration post-filter.
+[inprocess] Work towards latency improvement -- pruning, quantization
+[pending] mobile deployment and app testing
+[pending] visual-guided covariance gating
