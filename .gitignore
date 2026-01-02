@@ -4,3 +4,7 @@
 evaluation*.txt
 venv/
 __pycache__/
+
+
+*.pth
+*.tflite
